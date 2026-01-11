@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 # Конфигурация
 BOT_TOKEN = "8397987541:AAHYDk99fAS5qp9Pi5nCOkXUdK4Eq5keiPY"
-OPENROUTER_API_KEY = "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"
+OPENROUTER_API_KEY = "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"
 API_ID = 22435995
 API_HASH = "4c7b651950ed7f53520e66299453144d"
 
