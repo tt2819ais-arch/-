@@ -112,7 +112,7 @@ async def login_command(client, message: Message):
     user_id = message.from_user.id
     
     if user_id in user_sessions and user_sessions[user_id].get('logged_in'):
-        await message.reply("✅ Вы уже авторизованы!")
+        await message.reply("✅ Вы уже авторизованы! Используйте `.старт` чтобы включить AI.")
         return
     
     # Создаем новую сессию
@@ -124,11 +124,49 @@ async def login_command(client, message: Message):
         "Для отмены отправьте /cancel"
     )
 
-# Обработка ввода номера телефона и кода
+# Отдельный обработчик для команд управления AI (.старт и .стоп)
 @bot_app.on_message(filters.text & filters.private)
-async def handle_input(client, message: Message):
+async def handle_ai_commands(client, message: Message):
+    user_id = message.from_user.id
+    text = message.text.strip().lower()
+    
+    # Обрабатываем команды управления AI
+    if text == ".старт":
+        if user_id in user_sessions and user_sessions[user_id].get('logged_in'):
+            active_users.add(user_id)
+            await message.reply("✅ AI включен! Теперь я буду отвечать на ваши сообщения.\n\nОтправьте `.стоп` чтобы выключить.")
+        else:
+            await message.reply("❌ Сначала авторизуйтесь через /login")
+        return
+    
+    elif text == ".стоп":
+        if user_id in active_users:
+            active_users.remove(user_id)
+            await message.reply("✅ AI выключен. Отправьте `.старт` чтобы включить снова.")
+        else:
+            await message.reply("ℹ️ AI уже выключен.")
+        return
+    
+    # Если AI включен и это обычное сообщение (не команда)
+    elif user_id in active_users and not text.startswith('/'):
+        # Отвечаем через AI
+        await message.reply("🤔 Думаю...")
+        response = get_ai_response(message.text)
+        await message.reply(f"🤖 {response}")
+        return
+    
+    # Если это не команда AI и пользователь не в процессе авторизации, пропускаем
+    if user_id not in user_sessions:
+        return
+    
+    # Если пользователь в процессе авторизации, передаем в другой обработчик
+    await handle_auth_input(client, message)
+
+# Обработчик для процесса авторизации
+async def handle_auth_input(client, message):
     user_id = message.from_user.id
     text = message.text.strip()
+    session = user_sessions[user_id]
     
     # Отмена операции
     if text.lower() == "/cancel":
@@ -143,35 +181,6 @@ async def handle_input(client, message: Message):
             active_users.remove(user_id)
         await message.reply("❌ Операция отменена.")
         return
-    
-    # Если пользователь не в процессе авторизации
-    if user_id not in user_sessions:
-        # Проверяем команды управления AI
-        if text.lower() == ".старт":
-            if user_id in user_sessions and user_sessions[user_id].get('logged_in'):
-                active_users.add(user_id)
-                await message.reply("✅ AI включен! Теперь я буду отвечать на ваши сообщения.\n\nОтправьте `.стоп` чтобы выключить.")
-            else:
-                await message.reply("❌ Сначала авторизуйтесь через /login")
-            return
-        elif text.lower() == ".стоп":
-            if user_id in active_users:
-                active_users.remove(user_id)
-                await message.reply("✅ AI выключен. Отправьте `.старт` чтобы включить снова.")
-            else:
-                await message.reply("ℹ️ AI уже выключен.")
-            return
-        # Если это обычное сообщение и AI включен
-        elif user_id in active_users:
-            # Отвечаем через AI
-            await message.reply("🤔 Думаю...")
-            response = get_ai_response(text)
-            await message.reply(f"🤖 {response}")
-            return
-        else:
-            return
-    
-    session = user_sessions[user_id]
     
     # Если номер телефона еще не введен
     if not session['phone_number'] and not session.get('logged_in'):
@@ -231,7 +240,7 @@ async def handle_input(client, message: Message):
                 session['logged_in'] = True
                 await message.reply(
                     "✅ **Авторизация успешна!**\n\n"
-                    "Теперь вы можете использовать AI:\n"
+                    "Теперь используйте команды:\n"
                     "• `.старт` - включить AI\n"
                     "• `.стоп` - выключить AI\n"
                     "• После включения просто пишите сообщения и AI будет отвечать\n\n"
@@ -269,7 +278,7 @@ async def handle_input(client, message: Message):
             
             await message.reply(
                 "✅ **Авторизация успешна!**\n\n"
-                "Теперь вы можете использовать AI:\n"
+                "Теперь используйте команды:\n"
                 "• `.старт` - включить AI\n"
                 "• `.стоп` - выключить AI\n"
                 "• После включения просто пишите сообщения и AI будет отвечать\n\n"
@@ -348,4 +357,6 @@ async def ai_test_command(client, message: Message):
 # Запуск бота
 if __name__ == "__main__":
     print("🤖 Бот запускается...")
+    print(f"👥 Зарегистрировано пользователей: {len(user_sessions)}")
+    print(f"🤖 Активных AI сессий: {len(active_users)}")
     bot_app.run()
