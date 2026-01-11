@@ -1,182 +1,304 @@
-import asyncio
-import json
+from pyrogram import Client, filters
+from pyrogram.types import Message
 import requests
-from aiogram import Bot, Dispatcher, Router, types
-from aiogram.filters import Command
-from aiogram.filters.text import Text
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.fsm.state import State, StatesGroup
-from reportlab.platypus import SimpleDocTemplate, Paragraph, PageBreak
-from reportlab.lib.styles import getSampleStyleSheet
-from io import BytesIO
+import json
+import asyncio
+from datetime import datetime, timedelta
 
-# ---------- ТОКЕНЫ ----------
+# Конфигурация Telegram бота
 BOT_TOKEN = "8397987541:AAHYDk99fAS5qp9Pi5nCOkXUdK4Eq5keiPY"
 OPENROUTER_API_KEY = "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"
-MODEL_NAME = "meta-llama/llama-3.3-70b-instruct:free"
+API_ID = 22435995
+API_HASH = "4c7b651950ed7f53520e66299453144d"
 
-# ---------- ИНИЦИАЛИЗАЦИЯ ----------
-bot = Bot(token=BOT_TOKEN)
-storage = MemoryStorage()
-dp = Dispatcher(storage=storage)
-router = Router()
+# Словари для хранения данных
+user_sessions = {}  # Сессии авторизации пользователей
+active_users = set()  # Пользователи с включенным AI в личных сообщениях
 
-# ---------- СОСТОЯНИЯ FSM ----------
-class RefStates(StatesGroup):
-    school = State()
-    group_class = State()
-    student_name = State()
-    teacher_name = State()
-    topic = State()
-    pages = State()
+# Функция для создания сессии пользователя
+def create_user_session(user_id):
+    user_sessions[user_id] = {
+        'phone_number': None,
+        'phone_code_hash': None,
+        'logged_in': False,
+        'client': None,
+        'created_at': datetime.now()
+    }
+    return user_sessions[user_id]
 
-# ---------- ФУНКЦИЯ ГЕНЕРАЦИИ ТЕКСТА ----------
-def generate_text(topic: str, pages: int, title_page: str) -> str:
-    try:
-        pages = int(pages)
-    except:
-        return "Ошибка: количество страниц должно быть числом."
+# Функция для очистки старых сессий
+def cleanup_old_sessions():
+    current_time = datetime.now()
+    expired_users = []
+    
+    for user_id, session in user_sessions.items():
+        if current_time - session['created_at'] > timedelta(hours=1):
+            expired_users.append(user_id)
+    
+    for user_id in expired_users:
+        if user_id in user_sessions:
+            if user_sessions[user_id]['client']:
+                try:
+                    user_sessions[user_id]['client'].disconnect()
+                except:
+                    pass
+            del user_sessions[user_id]
+            if user_id in active_users:
+                active_users.remove(user_id)
 
-    words_per_page = 350
-    target_words = pages * words_per_page
-
-    prompt = f"""
-Напиши реферат максимально естественно, как будто его писал ученик.
-Тема: {topic}
-Количество страниц: {pages} (~{target_words} слов)
-
-Титульный лист:
-{title_page}
-
-Не используй AI-штампы, сложный академический стиль, канцелярит. 
-Текст должен быть живым и человечным.
-"""
-
+# Функция для общения с OpenRouter AI
+def get_ai_response(user_message):
+    url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://t.me/",
+        "X-Title": "Telegram AI Bot"
     }
-
     data = {
-        "model": MODEL_NAME,
-        "messages": [{"role": "user", "content": prompt}],
-        "provider": {"sort": "throughput"}
+        "model": "meta-llama/llama-3.3-70b-instruct:free",
+        "messages": [
+            {
+                "role": "user",
+                "content": user_message
+            }
+        ],
+        "provider": {
+            "sort": "throughput"
+        }
     }
-
+    
     try:
-        r = requests.post("https://openrouter.ai/api/v1/chat/completions",
-                          headers=headers, data=json.dumps(data))
-        resp = r.json()
-
-        if "choices" in resp and len(resp["choices"]) > 0:
-            return resp["choices"][0]["message"]["content"]
+        response = requests.post(url, headers=headers, data=json.dumps(data), timeout=30)
+        if response.status_code == 200:
+            try:
+                return response.json()["choices"][0]["message"]["content"]
+            except (KeyError, IndexError) as e:
+                print(f"Ошибка парсинга ответа: {e}")
+                return "Ошибка: не удалось получить ответ AI."
         else:
-            return "Ошибка OpenRouter:\n" + json.dumps(resp, ensure_ascii=False, indent=2)
-
+            print(f"Ошибка API: {response.status_code}, {response.text}")
+            return f"Ошибка AI API: {response.status_code}"
     except Exception as e:
-        return f"Ошибка API: {e}"
+        print(f"Ошибка подключения: {e}")
+        return f"Ошибка подключения к AI: {str(e)}"
 
-# ---------- ФУНКЦИЯ СОЗДАНИЯ PDF ----------
-def make_pdf(text: str) -> BytesIO:
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer)
-    styles = getSampleStyleSheet()
-    story = []
+# Создаем бота
+bot_app = Client("telegram_bot", bot_token=BOT_TOKEN, api_id=API_ID, api_hash=API_HASH)
 
-    for block in text.split("\n"):
-        if block.strip().lower().startswith("титульный лист"):
-            story.append(Paragraph(block, styles["Title"]))
-            story.append(PageBreak())
-        else:
-            story.append(Paragraph(block, styles["Normal"]))
+# Команда /start
+@bot_app.on_message(filters.command("start") & filters.private)
+async def start_command(client, message: Message):
+    cleanup_old_sessions()
+    
+    await message.reply(
+        "👋 Добро пожаловать в AI бота!\n\n"
+        "📱 **Для начала работы:**\n"
+        "1. Используйте /login для авторизации по номеру телефона\n"
+        "2. После авторизации используйте `.старт` чтобы включить AI\n"
+        "3. Начните общаться с AI\n"
+        "4. Используйте `.стоп` чтобы выключить AI\n\n"
+        "🔧 **Доступные команды:**\n"
+        "/login - Авторизация\n"
+        "/logout - Выход\n"
+        "/status - Статус\n"
+        "/ai [запрос] - Тест AI"
+    )
 
-    doc.build(story)
-    buffer.seek(0)
-    return buffer
-
-# ---------- /start ----------
-@router.message(Command("start"))
-async def start(message: types.Message):
-    await message.answer("Привет! Я бот для интерактивного создания рефератов.\n"
-                         "Нажми /ref чтобы начать процесс генерации.")
-
-# ---------- /ref (начало диалога) ----------
-@router.message(Command("ref"))
-async def ref_start(message: types.Message, state: FSMContext):
-    await state.clear()
-    await message.answer("Сначала заполним титульный лист.\n\nВведите название учебного заведения:")
-    await state.set_state(RefStates.school)
-
-# ---------- ШАГ 1: школа ----------
-@router.message(RefStates.school)
-async def step_school(message: types.Message, state: FSMContext):
-    await state.update_data(school=message.text)
-    await message.answer("Введите группу или класс:")
-    await state.set_state(RefStates.group_class)
-
-# ---------- ШАГ 2: группа/класс ----------
-@router.message(RefStates.group_class)
-async def step_group(message: types.Message, state: FSMContext):
-    await state.update_data(group_class=message.text)
-    await message.answer("Введите ФИО ученика:")
-    await state.set_state(RefStates.student_name)
-
-# ---------- ШАГ 3: ФИО ученика ----------
-@router.message(RefStates.student_name)
-async def step_student(message: types.Message, state: FSMContext):
-    await state.update_data(student_name=message.text)
-    await message.answer("Введите ФИО преподавателя:")
-    await state.set_state(RefStates.teacher_name)
-
-# ---------- ШАГ 4: ФИО преподавателя ----------
-@router.message(RefStates.teacher_name)
-async def step_teacher(message: types.Message, state: FSMContext):
-    await state.update_data(teacher_name=message.text)
-    await message.answer("Введите тему реферата:")
-    await state.set_state(RefStates.topic)
-
-# ---------- ШАГ 5: тема ----------
-@router.message(RefStates.topic)
-async def step_topic(message: types.Message, state: FSMContext):
-    await state.update_data(topic=message.text)
-    await message.answer("Сколько страниц сделать?")
-    await state.set_state(RefStates.pages)
-
-# ---------- ШАГ 6: страницы и генерация ----------
-@router.message(RefStates.pages)
-async def step_pages(message: types.Message, state: FSMContext):
-    try:
-        pages = int(message.text)
-    except:
-        await message.answer("Введите число страниц цифрами!")
+# Команда /login - авторизация по номеру телефона
+@bot_app.on_message(filters.command("login") & filters.private)
+async def login_command(client, message: Message):
+    user_id = message.from_user.id
+    
+    if user_id in user_sessions and user_sessions[user_id].get('logged_in'):
+        await message.reply("✅ Вы уже авторизованы!")
         return
+    
+    # Создаем новую сессию
+    session = create_user_session(user_id)
+    
+    await message.reply(
+        "📱 **Введите номер телефона в международном формате:**\n"
+        "Пример: `+79123456789`\n\n"
+        "Для отмены отправьте /cancel"
+    )
 
-    data = await state.get_data()
-    school = data["school"]
-    group = data["group_class"]
-    student = data["student_name"]
-    teacher = data["teacher_name"]
-    topic = data["topic"]
+# Обработка ввода номера телефона и кода
+@bot_app.on_message(filters.text & filters.private)
+async def handle_input(client, message: Message):
+    user_id = message.from_user.id
+    text = message.text.strip()
+    
+    # Отмена операции
+    if text.lower() == "/cancel":
+        if user_id in user_sessions:
+            if user_sessions[user_id]['client']:
+                try:
+                    await user_sessions[user_id]['client'].disconnect()
+                except:
+                    pass
+            del user_sessions[user_id]
+        if user_id in active_users:
+            active_users.remove(user_id)
+        await message.reply("❌ Операция отменена.")
+        return
+    
+    # Если пользователь не в процессе авторизации
+    if user_id not in user_sessions:
+        # Проверяем команды управления AI
+        if text.lower() == ".старт":
+            if user_id in user_sessions and user_sessions[user_id].get('logged_in'):
+                active_users.add(user_id)
+                await message.reply("✅ AI включен! Теперь я буду отвечать на ваши сообщения.\n\nОтправьте `.стоп` чтобы выключить.")
+            else:
+                await message.reply("❌ Сначала авторизуйтесь через /login")
+            return
+        elif text.lower() == ".стоп":
+            if user_id in active_users:
+                active_users.remove(user_id)
+                await message.reply("✅ AI выключен. Отправьте `.старт` чтобы включить снова.")
+            else:
+                await message.reply("ℹ️ AI уже выключен.")
+            return
+        # Если это обычное сообщение и AI включен
+        elif user_id in active_users:
+            # Отвечаем через AI
+            await message.reply("🤔 Думаю...")
+            response = get_ai_response(text)
+            await message.reply(f"🤖 {response}")
+            return
+        else:
+            return
+    
+    session = user_sessions[user_id]
+    
+    # Если номер телефона еще не введен
+    if not session['phone_number'] and not session.get('logged_in'):
+        phone_number = text
+        
+        # Валидация номера
+        if not phone_number.startswith('+') or len(phone_number) < 10:
+            await message.reply("❌ Неверный формат. Пример: `+79123456789`")
+            return
+        
+        session['phone_number'] = phone_number
+        
+        try:
+            # Создаем клиент для пользователя
+            client_name = f"user_session_{user_id}"
+            user_client = Client(
+                client_name,
+                api_id=API_ID,
+                api_hash=API_HASH,
+                in_memory=True
+            )
+            
+            # Запрашиваем код
+            await user_client.connect()
+            sent_code = await user_client.send_code(phone_number)
+            session['phone_code_hash'] = sent_code.phone_code_hash
+            session['client'] = user_client
+            
+            await message.reply(
+                "📨 **Код отправлен на ваш номер телефона.**\n"
+                "Введите код в формате: `12345`\n\n"
+                "Для отмены отправьте /cancel"
+            )
+            
+        except Exception as e:
+            error_msg = str(e)
+            await message.reply(f"❌ Ошибка: {error_msg}")
+            if user_id in user_sessions:
+                del user_sessions[user_id]
+    
+    # Если вводится код подтверждения
+    elif session['phone_number'] and session['phone_code_hash'] and not session.get('logged_in'):
+        try:
+            code = text
+            
+            # Авторизуемся
+            await session['client'].sign_in(
+                phone_number=session['phone_number'],
+                phone_code_hash=session['phone_code_hash'],
+                phone_code=code
+            )
+            
+            session['logged_in'] = True
+            await message.reply(
+                "✅ **Авторизация успешна!**\n\n"
+                "Теперь вы можете использовать AI:\n"
+                "• `.старт` - включить AI\n"
+                "• `.стоп` - выключить AI\n"
+                "• После включения просто пишите сообщения и AI будет отвечать\n\n"
+                "Используйте `/logout` для выхода."
+            )
+            
+        except Exception as e:
+            error_msg = str(e)
+            await message.reply(f"❌ Ошибка авторизации: {error_msg}")
+            if user_id in user_sessions:
+                del user_sessions[user_id]
 
-    # Формируем титульный лист
-    title_page = f"Учебное заведение: {school}\nКласс/Группа: {group}\nУченик: {student}\nПреподаватель: {teacher}"
+# Команда /logout
+@bot_app.on_message(filters.command("logout") & filters.private)
+async def logout_command(client, message: Message):
+    user_id = message.from_user.id
+    
+    if user_id in user_sessions:
+        if user_sessions[user_id]['client']:
+            try:
+                await user_sessions[user_id]['client'].disconnect()
+            except:
+                pass
+        del user_sessions[user_id]
+    
+    if user_id in active_users:
+        active_users.remove(user_id)
+    
+    await message.reply("✅ Вы успешно вышли из системы.")
 
-    await message.answer("⏳ Генерирую реферат... Это может занять 10–20 секунд.")
+# Команда /status
+@bot_app.on_message(filters.command("status") & filters.private)
+async def status_command(client, message: Message):
+    user_id = message.from_user.id
+    
+    status_text = f"👤 **ID пользователя:** {user_id}\n"
+    
+    if user_id in user_sessions and user_sessions[user_id].get('logged_in'):
+        status_text += "🔓 **Авторизация:** ✅\n"
+    else:
+        status_text += "🔒 **Авторизация:** ❌\n"
+    
+    if user_id in active_users:
+        status_text += "🤖 **AI статус:** Включен\n"
+        status_text += "📝 Просто пишите сообщения и я буду отвечать!"
+    else:
+        status_text += "🤖 **AI статус:** Выключен\n"
+        status_text += "💡 Используйте `.старт` чтобы включить AI"
+    
+    await message.reply(status_text)
 
-    # Генерация текста
-    text = generate_text(topic, pages, title_page)
-    pdf_file = make_pdf(text)
+# Команда /ai для тестирования
+@bot_app.on_message(filters.command("ai") & filters.private)
+async def ai_test_command(client, message: Message):
+    user_id = message.from_user.id
+    
+    if user_id not in user_sessions or not user_sessions[user_id].get('logged_in'):
+        await message.reply("❌ Сначала авторизуйтесь через /login")
+        return
+    
+    # Получаем текст запроса
+    query = message.text.split(' ', 1)
+    if len(query) < 2:
+        await message.reply("❌ Введите запрос после команды /ai\nПример: `/ai Привет, как дела?`")
+        return
+    
+    user_message = query[1]
+    await message.reply("🤔 Думаю...")
+    
+    response = get_ai_response(user_message)
+    await message.reply(f"🤖 {response}")
 
-    await message.answer_document(document=pdf_file, filename="referat.pdf")
-    await state.clear()
-
-# ---------- ИНИЦИАЛИЗАЦИЯ РОУТЕРОВ ----------
-dp.include_router(router)
-
-# ---------- ЗАПУСК ----------
-async def main():
-    await dp.start_polling(bot)
-
-if __name__ == "__main__":
-    asyncio.run(main())
+# Запуск бота
+print("🤖 Бот запускается...")
+bot_app.run()
