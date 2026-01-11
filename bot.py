@@ -4,12 +4,17 @@ import requests
 import json
 import asyncio
 from datetime import datetime, timedelta
+import os
+from dotenv import load_dotenv
 
-# Конфигурация Telegram бота
-BOT_TOKEN = "8397987541:AAHYDk99fAS5qp9Pi5nCOkXUdK4Eq5keiPY"
-OPENROUTER_API_KEY = "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"
-API_ID = 22435995
-API_HASH = "4c7b651950ed7f53520e66299453144d"
+# Загружаем переменные окружения
+load_dotenv()
+
+# Конфигурация из переменных окружения
+BOT_TOKEN = os.getenv("BOT_TOKEN", "8397987541:AAHYDk99fAS5qp9Pi5nCOkXUdK4Eq5keiPY")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "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")
+API_ID = int(os.getenv("API_ID", "22435995"))
+API_HASH = os.getenv("API_HASH", "4c7b651950ed7f53520e66299453144d")
 
 # Словари для хранения данных
 user_sessions = {}  # Сессии авторизации пользователей
@@ -20,6 +25,7 @@ def create_user_session(user_id):
     user_sessions[user_id] = {
         'phone_number': None,
         'phone_code_hash': None,
+        'password_needed': False,
         'logged_in': False,
         'client': None,
         'created_at': datetime.now()
@@ -211,19 +217,61 @@ async def handle_input(client, message: Message):
             if user_id in user_sessions:
                 del user_sessions[user_id]
     
-    # Если вводится код подтверждения
-    elif session['phone_number'] and session['phone_code_hash'] and not session.get('logged_in'):
+    # Если вводится код подтверждения (и не нужен пароль)
+    elif (session['phone_number'] and 
+          session['phone_code_hash'] and 
+          not session['password_needed'] and 
+          not session.get('logged_in')):
         try:
             code = text
             
-            # Авторизуемся
-            await session['client'].sign_in(
-                phone_number=session['phone_number'],
-                phone_code_hash=session['phone_code_hash'],
-                phone_code=code
-            )
+            # Пытаемся авторизоваться
+            try:
+                await session['client'].sign_in(
+                    phone_number=session['phone_number'],
+                    phone_code_hash=session['phone_code_hash'],
+                    phone_code=code
+                )
+                
+                session['logged_in'] = True
+                await message.reply(
+                    "✅ **Авторизация успешна!**\n\n"
+                    "Теперь вы можете использовать AI:\n"
+                    "• `.старт` - включить AI\n"
+                    "• `.стоп` - выключить AI\n"
+                    "• После включения просто пишите сообщения и AI будет отвечать\n\n"
+                    "Используйте `/logout` для выхода."
+                )
+                
+            except Exception as e:
+                if "SESSION_PASSWORD_NEEDED" in str(e):
+                    # Запрашиваем пароль 2FA
+                    session['password_needed'] = True
+                    await message.reply(
+                        "🔐 **Требуется пароль двухфакторной аутентификации (2FA)**\n\n"
+                        "Введите пароль от вашего аккаунта Telegram:\n"
+                        "(Это пароль, который вы установили в настройках Telegram)"
+                    )
+                else:
+                    raise e
+                
+        except Exception as e:
+            error_msg = str(e)
+            await message.reply(f"❌ Ошибка авторизации: {error_msg}")
+            if user_id in user_sessions:
+                del user_sessions[user_id]
+    
+    # Если нужен пароль 2FA
+    elif session['password_needed'] and not session.get('logged_in'):
+        try:
+            password = text
+            
+            # Проверяем пароль
+            await session['client'].check_password(password=password)
             
             session['logged_in'] = True
+            session['password_needed'] = False
+            
             await message.reply(
                 "✅ **Авторизация успешна!**\n\n"
                 "Теперь вы можете использовать AI:\n"
@@ -235,9 +283,12 @@ async def handle_input(client, message: Message):
             
         except Exception as e:
             error_msg = str(e)
-            await message.reply(f"❌ Ошибка авторизации: {error_msg}")
-            if user_id in user_sessions:
-                del user_sessions[user_id]
+            if "PASSWORD_HASH_INVALID" in str(e):
+                await message.reply("❌ Неверный пароль. Попробуйте еще раз:")
+            else:
+                await message.reply(f"❌ Ошибка: {error_msg}")
+                if user_id in user_sessions:
+                    del user_sessions[user_id]
 
 # Команда /logout
 @bot_app.on_message(filters.command("logout") & filters.private)
