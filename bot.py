@@ -1,96 +1,65 @@
-import asyncio
 import requests
-from aiogram import Bot, Dispatcher, F
-from aiogram.types import Message
-from reportlab.platypus import SimpleDocTemplate, Paragraph, PageBreak
-from reportlab.lib.styles import getSampleStyleSheet
+import json
 
-BOT_TOKEN = "8397987541:AAHYDk99fAS5qp9Pi5nCOkXUdK4Eq5keiPY"
-OPENROUTER_KEY = "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"
+OPENROUTER_API_KEY = "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"
+MODEL = "deepseek/deepseek-chat"  # или любая другая модель OpenRouter
 
-bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher()
+def generate_text(topic, pages, title_page):
+    # Безопасная обработка числа страниц
+    try:
+        pages = int(pages)
+    except:
+        return "Ошибка: количество страниц должно быть числом."
 
-SYSTEM_PROMPT = """
-Ты — помощник, который пишет рефераты и конспекты в стиле обычного школьника
-или студента. Текст должен звучать естественно, местами немного разговорно,
-но без сленга. Избегай шаблонных фраз нейросетей, сложных конструкций,
-формального академического стиля.
+    # Примерный подсчёт слов на “ученическую страницу”
+    words_per_page = 350
+    target_words = pages * words_per_page
 
-Пиши как человек, который объясняет тему своими словами. Можно использовать
-простые связки, небольшие повторы и плавные переходы.
+    prompt = f"""
+Тебе нужно написать реферат так, чтобы он выглядел как будто его писал реальный ученик, без типичного AI-стиля. 
+Избегай канцелярита, супер-правильных формулировок и идеально литературной речи.
 
-1 страница = примерно 1900 символов текста.
-"""
+Формат:
+1) Титульный лист (данные пользователя):
+{title_page}
 
-def generate_text(topic: str, pages: int, title_page: str):
-    target_symbols = pages * 1900
+2) Основная часть.
+Объём: примерно {pages} страниц ({target_words} слов).
+Тема реферата: "{topic}"
 
-    prompt = (
-        f"Титульный лист:\n{title_page}\n\n"
-        f"Теперь напиши реферат на тему: '{topic}'. "
-        f"Объём: около {target_symbols} символов. "
-        "Стиль — как у обычного ученика или студента."
-    )
+Требования:
+- текст должен быть естественным, местами простым, как будто студент писал своими словами;
+- не используй фразы: "как модель искусственного интеллекта", "в заключение можно сказать", "данный текст";
+- используй лёгкий пересказ, примеры, объяснения, но без академического тона;
+- допускаются мелкие шероховатости, чтобы текст звучал живым;
+- структура: введение → раскрытие темы → вывод.
+
+Теперь напиши готовый реферат.
+    """
 
     headers = {
-        "Authorization": f"Bearer {OPENROUTER_KEY}",
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json"
     }
 
     data = {
-        "model": "meta-llama/llama-3-8b-instruct",
+        "model": MODEL,
         "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt}
         ]
     }
 
-    r = requests.post("https://openrouter.ai/api/v1/chat/completions",
-                      headers=headers, json=data)
-
-    return r.json()["choices"][0]["message"]["content"]
-
-
-def make_pdf(text: str, filename="referat.pdf"):
-    styles = getSampleStyleSheet()
-    story = []
-
-    doc = SimpleDocTemplate(filename)
-
-    parts = text.split("\n\n")
-
-    for block in parts:
-        if "Титульный лист" in block:
-            story.append(Paragraph(block, styles["Title"]))
-            story.append(PageBreak())
-        else:
-            story.append(Paragraph(block, styles["Normal"]))
-
-    doc.build(story)
-    return filename
-
-
-@dp.message(F.text.startswith("/ref"))
-async def ref_command(msg: Message):
     try:
-        _, topic, pages, *title_text = msg.text.split(" ")
-        pages = int(pages)
-        title_page = " ".join(title_text)
+        r = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=data)
+        response = r.json()
 
-        await msg.answer("Генерирую текст, подожди 5–10 секунд...")
+        # Универсальное получение текста
+        if "choices" in response and len(response["choices"]) > 0:
+            text = response["choices"][0]["message"]["content"]
+        else:
+            text = "Ошибка: Модель не вернула текст. Ответ:\n" + json.dumps(response, ensure_ascii=False)
 
-        text = generate_text(topic, pages, title_page)
-        file_path = make_pdf(text)
-
-        await msg.answer_document(open(file_path, "rb"))
+        return text
 
     except Exception as e:
-        await msg.answer(f"Ошибка: {e}\n\nФормат:\n/ref <тема> <страницы> <титульный лист>")
-
-
-async def main():
-    await dp.start_polling(bot)
-
-if __name__ == "__main__":
-    asyncio.run(main())
+        return f"Ошибка при запросе к API: {e}"
