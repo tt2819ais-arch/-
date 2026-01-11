@@ -1,23 +1,13 @@
-# Используем официальный образ Python
 FROM python:3.11-slim
 
-# Устанавливаем системные зависимости
-RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
-
-# Создаем директорию для приложения
 WORKDIR /app
 
-# Копируем requirements.txt
+# Копируем зависимости и устанавливаем их
 COPY requirements.txt .
-
-# Устанавливаем Python зависимости
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копируем исходный код
+# Копируем код бота
 COPY . .
 
 # Запускаем бота
-CMD ["python", "-u", "bot.py"]
+CMD ["python", "bot.py"]
