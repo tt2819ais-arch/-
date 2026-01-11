@@ -5,7 +5,7 @@ import json
 import asyncio
 from datetime import datetime, timedelta
 
-# Конфигурация (все данные прямо в коде)
+# Конфигурация
 BOT_TOKEN = "8397987541:AAHYDk99fAS5qp9Pi5nCOkXUdK4Eq5keiPY"
 OPENROUTER_API_KEY = "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"
 API_ID = 22435995
@@ -13,7 +13,7 @@ API_HASH = "4c7b651950ed7f53520e66299453144d"
 
 # Словари для хранения данных
 user_sessions = {}  # Сессии авторизации пользователей
-active_users = set()  # Пользователи с включенным AI в личных сообщениях
+active_chats = set()  # ЛИЧНЫЕ ЧАТЫ с другими людьми, где включен AI
 
 # Функция для создания сессии пользователя
 def create_user_session(user_id):
@@ -22,7 +22,7 @@ def create_user_session(user_id):
         'phone_code_hash': None,
         'password_needed': False,
         'logged_in': False,
-        'client': None,
+        'client': None,  # Это клиент пользователя (не бот!)
         'created_at': datetime.now()
     }
     return user_sessions[user_id]
@@ -44,8 +44,6 @@ def cleanup_old_sessions():
                 except:
                     pass
             del user_sessions[user_id]
-            if user_id in active_users:
-                active_users.remove(user_id)
 
 # Функция для общения с OpenRouter AI
 def get_ai_response(user_message):
@@ -71,48 +69,58 @@ def get_ai_response(user_message):
     
     try:
         response = requests.post(url, headers=headers, data=json.dumps(data), timeout=30)
+        
+        print(f"OpenRouter статус: {response.status_code}")
+        
         if response.status_code == 200:
             try:
                 return response.json()["choices"][0]["message"]["content"]
             except (KeyError, IndexError) as e:
                 print(f"Ошибка парсинга ответа: {e}")
                 return "Ошибка: не удалось получить ответ AI."
+        elif response.status_code == 401:
+            return "❌ Ошибка: Неверный API ключ OpenRouter!"
         else:
-            print(f"Ошибка API: {response.status_code}, {response.text}")
-            return f"Ошибка AI API: {response.status_code}"
+            return f"❌ Ошибка AI API: {response.status_code}"
+            
     except Exception as e:
-        print(f"Ошибка подключения: {e}")
-        return f"Ошибка подключения к AI: {str(e)}"
+        print(f"Ошибка: {e}")
+        return f"❌ Ошибка подключения к AI"
 
-# Создаем бота
+# Создаем ТОЛЬКО бота (не пользовательский клиент пока)
 bot_app = Client("telegram_bot", bot_token=BOT_TOKEN, api_id=API_ID, api_hash=API_HASH)
 
-# Команда /start
+# ==============================================
+# ОБРАБОТЧИКИ ДЛЯ БОТА (личные сообщения с ботом)
+# ==============================================
+
+# Команда /start в личных сообщениях с ботом
 @bot_app.on_message(filters.command("start") & filters.private)
 async def start_command(client, message: Message):
     cleanup_old_sessions()
     
     await message.reply(
-        "👋 Добро пожаловать в AI бота!\n\n"
-        "📱 **Для начала работы:**\n"
-        "1. Используйте /login для авторизации по номеру телефона\n"
-        "2. После авторизации используйте `.старт` чтобы включить AI\n"
-        "3. Начните общаться с AI\n"
-        "4. Используйте `.стоп` чтобы выключить AI\n\n"
-        "🔧 **Доступные команды:**\n"
+        "👋 Добро пожаловать!\n\n"
+        "📱 **Как работает AI бот:**\n"
+        "1. Используйте /login чтобы авторизоваться\n"
+        "2. После авторизации зайдите в ЛИЧНЫЙ ЧАТ с другим человеком\n"
+        "3. Напишите `.старт` чтобы включить AI в ЭТОМ чате\n"
+        "4. AI будет отвечать на сообщения в этом чате\n"
+        "5. Напишите `.стоп` чтобы выключить AI\n\n"
+        "🔧 **Команды для бота:**\n"
         "/login - Авторизация\n"
         "/logout - Выход\n"
         "/status - Статус\n"
-        "/ai [запрос] - Тест AI"
+        "/help - Помощь"
     )
 
-# Команда /login - авторизация по номеру телефона
+# Команда /login - авторизация через бота
 @bot_app.on_message(filters.command("login") & filters.private)
 async def login_command(client, message: Message):
     user_id = message.from_user.id
     
     if user_id in user_sessions and user_sessions[user_id].get('logged_in'):
-        await message.reply("✅ Вы уже авторизованы! Используйте `.старт` чтобы включить AI.")
+        await message.reply("✅ Вы уже авторизованы! Теперь можете использовать AI в личных чатах.")
         return
     
     # Создаем новую сессию
@@ -124,49 +132,17 @@ async def login_command(client, message: Message):
         "Для отмены отправьте /cancel"
     )
 
-# Отдельный обработчик для команд управления AI (.старт и .стоп)
+# Обработка ввода в личных сообщениях с ботом
 @bot_app.on_message(filters.text & filters.private)
-async def handle_ai_commands(client, message: Message):
-    user_id = message.from_user.id
-    text = message.text.strip().lower()
-    
-    # Обрабатываем команды управления AI
-    if text == ".старт":
-        if user_id in user_sessions and user_sessions[user_id].get('logged_in'):
-            active_users.add(user_id)
-            await message.reply("✅ AI включен! Теперь я буду отвечать на ваши сообщения.\n\nОтправьте `.стоп` чтобы выключить.")
-        else:
-            await message.reply("❌ Сначала авторизуйтесь через /login")
-        return
-    
-    elif text == ".стоп":
-        if user_id in active_users:
-            active_users.remove(user_id)
-            await message.reply("✅ AI выключен. Отправьте `.старт` чтобы включить снова.")
-        else:
-            await message.reply("ℹ️ AI уже выключен.")
-        return
-    
-    # Если AI включен и это обычное сообщение (не команда)
-    elif user_id in active_users and not text.startswith('/'):
-        # Отвечаем через AI
-        await message.reply("🤔 Думаю...")
-        response = get_ai_response(message.text)
-        await message.reply(f"🤖 {response}")
-        return
-    
-    # Если это не команда AI и пользователь не в процессе авторизации, пропускаем
-    if user_id not in user_sessions:
-        return
-    
-    # Если пользователь в процессе авторизации, передаем в другой обработчик
-    await handle_auth_input(client, message)
-
-# Обработчик для процесса авторизации
-async def handle_auth_input(client, message):
+async def handle_bot_messages(client, message: Message):
     user_id = message.from_user.id
     text = message.text.strip()
-    session = user_sessions[user_id]
+    
+    # Если это не команда бота и пользователь не в процессе авторизации
+    if (not text.startswith('/') and 
+        user_id not in user_sessions and 
+        text not in ['.старт', '.стоп', '.start', '.stop']):
+        return
     
     # Отмена операции
     if text.lower() == "/cancel":
@@ -177,10 +153,19 @@ async def handle_auth_input(client, message):
                 except:
                     pass
             del user_sessions[user_id]
-        if user_id in active_users:
-            active_users.remove(user_id)
         await message.reply("❌ Операция отменена.")
         return
+    
+    # Если пользователь не в процессе авторизации
+    if user_id not in user_sessions:
+        # Это команды бота
+        if text.lower() in ["/help", "/помощь"]:
+            await start_command(client, message)
+        elif text.lower() in ["/status", "/статус"]:
+            await status_command(client, message)
+        return
+    
+    session = user_sessions[user_id]
     
     # Если номер телефона еще не введен
     if not session['phone_number'] and not session.get('logged_in'):
@@ -194,7 +179,7 @@ async def handle_auth_input(client, message):
         session['phone_number'] = phone_number
         
         try:
-            # Создаем клиент для пользователя
+            # Создаем клиент для пользователя (это важно!)
             client_name = f"user_session_{user_id}"
             user_client = Client(
                 client_name,
@@ -221,7 +206,7 @@ async def handle_auth_input(client, message):
             if user_id in user_sessions:
                 del user_sessions[user_id]
     
-    # Если вводится код подтверждения (и не нужен пароль)
+    # Если вводится код подтверждения
     elif (session['phone_number'] and 
           session['phone_code_hash'] and 
           not session['password_needed'] and 
@@ -240,11 +225,12 @@ async def handle_auth_input(client, message):
                 session['logged_in'] = True
                 await message.reply(
                     "✅ **Авторизация успешна!**\n\n"
-                    "Теперь используйте команды:\n"
-                    "• `.старт` - включить AI\n"
-                    "• `.стоп` - выключить AI\n"
-                    "• После включения просто пишите сообщения и AI будет отвечать\n\n"
-                    "Используйте `/logout` для выхода."
+                    "**Теперь как использовать AI:**\n"
+                    "1. Откройте личный чат с другим человеком\n"
+                    "2. Напишите `.старт` в этом чате\n"
+                    "3. AI будет отвечать на сообщения в этом чате\n"
+                    "4. Напишите `.стоп` чтобы выключить\n\n"
+                    "⚠️ **ВАЖНО:** Бот должен быть добавлен в чат!"
                 )
                 
             except Exception as e:
@@ -252,9 +238,8 @@ async def handle_auth_input(client, message):
                     # Запрашиваем пароль 2FA
                     session['password_needed'] = True
                     await message.reply(
-                        "🔐 **Требуется пароль двухфакторной аутентификации (2FA)**\n\n"
-                        "Введите пароль от вашего аккаунта Telegram:\n"
-                        "(Это пароль, который вы установили в настройках Telegram)"
+                        "🔐 **Требуется пароль 2FA**\n\n"
+                        "Введите пароль от вашего аккаунта Telegram:"
                     )
                 else:
                     raise e
@@ -278,11 +263,12 @@ async def handle_auth_input(client, message):
             
             await message.reply(
                 "✅ **Авторизация успешна!**\n\n"
-                "Теперь используйте команды:\n"
-                "• `.старт` - включить AI\n"
-                "• `.стоп` - выключить AI\n"
-                "• После включения просто пишите сообщения и AI будет отвечать\n\n"
-                "Используйте `/logout` для выхода."
+                "**Теперь как использовать AI:**\n"
+                "1. Откройте личный чат с другим человеком\n"
+                "2. Напишите `.старт` в этом чате\n"
+                "3. AI будет отвечать на сообщения в этом чате\n"
+                "4. Напишите `.стоп` чтобы выключить\n\n"
+                "⚠️ **ВАЖНО:** Бот должен быть добавлен в чат!"
             )
             
         except Exception as e:
@@ -307,9 +293,6 @@ async def logout_command(client, message: Message):
                 pass
         del user_sessions[user_id]
     
-    if user_id in active_users:
-        active_users.remove(user_id)
-    
     await message.reply("✅ Вы успешно вышли из системы.")
 
 # Команда /status
@@ -321,42 +304,85 @@ async def status_command(client, message: Message):
     
     if user_id in user_sessions and user_sessions[user_id].get('logged_in'):
         status_text += "🔓 **Авторизация:** ✅\n"
+        status_text += f"📱 **Номер:** {user_sessions[user_id]['phone_number']}\n"
+        
+        # Считаем активные чаты этого пользователя
+        user_active_chats = [chat_id for chat_id in active_chats]
+        status_text += f"💬 **Активных чатов с AI:** {len(user_active_chats)}\n"
     else:
         status_text += "🔒 **Авторизация:** ❌\n"
     
-    if user_id in active_users:
-        status_text += "🤖 **AI статус:** Включен\n"
-        status_text += "📝 Просто пишите сообщения и я буду отвечать!"
-    else:
-        status_text += "🤖 **AI статус:** Выключен\n"
-        status_text += "💡 Используйте `.старт` чтобы включить AI"
-    
     await message.reply(status_text)
 
-# Команда /ai для тестирования
-@bot_app.on_message(filters.command("ai") & filters.private)
-async def ai_test_command(client, message: Message):
-    user_id = message.from_user.id
-    
-    if user_id not in user_sessions or not user_sessions[user_id].get('logged_in'):
-        await message.reply("❌ Сначала авторизуйтесь через /login")
-        return
-    
-    # Получаем текст запроса
-    query = message.text.split(' ', 1)
-    if len(query) < 2:
-        await message.reply("❌ Введите запрос после команды /ai\nПример: `/ai Привет, как дела?`")
-        return
-    
-    user_message = query[1]
-    await message.reply("🤔 Думаю...")
-    
-    response = get_ai_response(user_message)
-    await message.reply(f"🤖 {response}")
+# ==============================================
+# ОБРАБОТЧИКИ ДЛЯ ПОЛЬЗОВАТЕЛЬСКОГО КЛИЕНТА 
+# (работает в личных чатах с другими людьми)
+# ==============================================
 
-# Запуск бота
+# Функция для запуска пользовательского клиента
+async def run_user_client(user_id):
+    if user_id not in user_sessions or not user_sessions[user_id].get('logged_in'):
+        return None
+    
+    session = user_sessions[user_id]
+    
+    # Обработчик для команд .старт/.стоп в личных чатах
+    @session['client'].on_message(filters.text & filters.private & ~filters.me)
+    async def handle_user_messages(client, message: Message):
+        chat_id = message.chat.id
+        text = message.text.strip().lower()
+        
+        print(f"Пользователь {user_id} в чате {chat_id}: {text}")
+        
+        # Команды управления AI
+        if text == ".старт" or text == ".start":
+            active_chats.add(chat_id)
+            await message.reply("✅ AI включен в этом чате! Я буду отвечать на сообщения.")
+        
+        elif text == ".стоп" or text == ".stop":
+            active_chats.discard(chat_id)
+            await message.reply("✅ AI выключен в этом чате.")
+        
+        # Если AI включен в этом чате и это не команда
+        elif chat_id in active_chats and not text.startswith('.'):
+            try:
+                # Отвечаем от имени пользователя через AI
+                response = get_ai_response(message.text)
+                await message.reply(f"🤖 {response}")
+            except Exception as e:
+                print(f"Ошибка AI в чате {chat_id}: {e}")
+                await message.reply("❌ Ошибка AI")
+
+    # Запускаем пользовательский клиент
+    try:
+        if not session['client'].is_connected:
+            await session['client'].start()
+        return session['client']
+    except Exception as e:
+        print(f"Ошибка запуска клиента для {user_id}: {e}")
+        return None
+
+# Запуск бота и всех пользовательских клиентов
+async def main():
+    # Запускаем бота
+    await bot_app.start()
+    print("🤖 Бот запущен!")
+    
+    # Запускаем пользовательские клиенты для авторизованных пользователей
+    for user_id in list(user_sessions.keys()):
+        if user_sessions[user_id].get('logged_in') and user_sessions[user_id]['client']:
+            try:
+                await run_user_client(user_id)
+                print(f"👤 Клиент для пользователя {user_id} запущен")
+            except Exception as e:
+                print(f"❌ Ошибка запуска клиента {user_id}: {e}")
+    
+    # Ждем
+    await asyncio.Event().wait()
+
+# Запуск
 if __name__ == "__main__":
-    print("🤖 Бот запускается...")
-    print(f"👥 Зарегистрировано пользователей: {len(user_sessions)}")
-    print(f"🤖 Активных AI сессий: {len(active_users)}")
-    bot_app.run()
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\n⏹️ Бот остановлен")
