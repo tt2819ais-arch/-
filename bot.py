@@ -4,17 +4,12 @@ import requests
 import json
 import asyncio
 from datetime import datetime, timedelta
-import os
-from dotenv import load_dotenv
 
-# Загружаем переменные окружения
-load_dotenv()
-
-# Конфигурация из переменных окружения
-BOT_TOKEN = os.getenv("BOT_TOKEN", "8397987541:AAHYDk99fAS5qp9Pi5nCOkXUdK4Eq5keiPY")
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "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")
-API_ID = int(os.getenv("API_ID", "22435995"))
-API_HASH = os.getenv("API_HASH", "4c7b651950ed7f53520e66299453144d")
+# Конфигурация (все данные прямо в коде)
+BOT_TOKEN = "8397987541:AAHYDk99fAS5qp9Pi5nCOkXUdK4Eq5keiPY"
+OPENROUTER_API_KEY = "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"
+API_ID = 22435995
+API_HASH = "4c7b651950ed7f53520e66299453144d"
 
 # Словари для хранения данных
 user_sessions = {}  # Сессии авторизации пользователей
@@ -351,5 +346,6 @@ async def ai_test_command(client, message: Message):
     await message.reply(f"🤖 {response}")
 
 # Запуск бота
-print("🤖 Бот запускается...")
-bot_app.run()
+if __name__ == "__main__":
+    print("🤖 Бот запускается...")
+    bot_app.run()
