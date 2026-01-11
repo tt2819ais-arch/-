@@ -19,9 +19,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Копируем исходный код
 COPY . .
 
-# Создаем пользователя для безопасности
-RUN useradd -m -u 1000 botuser && chown -R botuser:botuser /app
-USER botuser
-
 # Запускаем бота
 CMD ["python", "-u", "bot.py"]
