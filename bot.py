@@ -1,41 +1,38 @@
+import asyncio
 import requests
-import json
+from aiogram import Bot, Dispatcher, Router
+from aiogram.filters import Command
+from aiogram.types import Message
 
+TELEGRAM_TOKEN = "8397987541:AAHYDk99fAS5qp9Pi5nCOkXUdK4Eq5keiPY"
 OPENROUTER_API_KEY = "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"
-MODEL = "deepseek/deepseek-chat"  # или любая другая модель OpenRouter
+MODEL = "deepseek/deepseek-chat"
+
+bot = Bot(token=TELEGRAM_TOKEN)
+dp = Dispatcher()
+router = Router()
+
 
 def generate_text(topic, pages, title_page):
-    # Безопасная обработка числа страниц
     try:
         pages = int(pages)
     except:
         return "Ошибка: количество страниц должно быть числом."
 
-    # Примерный подсчёт слов на “ученическую страницу”
     words_per_page = 350
     target_words = pages * words_per_page
 
     prompt = f"""
-Тебе нужно написать реферат так, чтобы он выглядел как будто его писал реальный ученик, без типичного AI-стиля. 
-Избегай канцелярита, супер-правильных формулировок и идеально литературной речи.
+Напиши реферат максимально естественно, как будто его писал ученик.
+Тема: {topic}
+Количество страниц: {pages} (примерно {target_words} слов)
 
-Формат:
-1) Титульный лист (данные пользователя):
+Титульный лист, указанный пользователем:
 {title_page}
 
-2) Основная часть.
-Объём: примерно {pages} страниц ({target_words} слов).
-Тема реферата: "{topic}"
-
-Требования:
-- текст должен быть естественным, местами простым, как будто студент писал своими словами;
-- не используй фразы: "как модель искусственного интеллекта", "в заключение можно сказать", "данный текст";
-- используй лёгкий пересказ, примеры, объяснения, но без академического тона;
-- допускаются мелкие шероховатости, чтобы текст звучал живым;
-- структура: введение → раскрытие темы → вывод.
-
-Теперь напиши готовый реферат.
-    """
+Не используй AI-штампы, сложный академический стиль, канцелярит. 
+Текст должен быть живым, простым, но грамотным.
+"""
 
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
@@ -50,16 +47,55 @@ def generate_text(topic, pages, title_page):
     }
 
     try:
-        r = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=data)
-        response = r.json()
+        r = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers=headers,
+            json=data
+        )
+        resp = r.json()
 
-        # Универсальное получение текста
-        if "choices" in response and len(response["choices"]) > 0:
-            text = response["choices"][0]["message"]["content"]
+        if "choices" in resp:
+            return resp["choices"][0]["message"]["content"]
         else:
-            text = "Ошибка: Модель не вернула текст. Ответ:\n" + json.dumps(response, ensure_ascii=False)
+            return "Ошибка: Модель не вернула текст."
+    except Exception as e:
+        return f"Ошибка API: {e}"
 
-        return text
+
+@router.message(Command("start"))
+async def start(message: Message):
+    await message.answer("Привет! Я бот для рефератов 😊\n\nФормат команды:\n/ref <тема> <страницы> <титульный лист>")
+
+
+@router.message(Command("ref"))
+async def ref(message: Message):
+    try:
+        parts = message.text.split(" ", 3)
+
+        if len(parts) < 4:
+            await message.answer("Ошибка!\n\nФормат:\n/ref <тема> <страницы> <титульный лист>")
+            return
+
+        topic = parts[1]
+        pages = parts[2]
+        title_page = parts[3]
+
+        await message.answer("⏳ Генерирую реферат...")
+
+        text = generate_text(topic, pages, title_page)
+
+        await message.answer(text)
 
     except Exception as e:
-        return f"Ошибка при запросе к API: {e}"
+        await message.answer(f"Ошибка обработки: {e}")
+
+
+dp.include_router(router)
+
+
+async def main():
+    await dp.start_polling(bot)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
