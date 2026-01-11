@@ -2,7 +2,8 @@ import asyncio
 import json
 import requests
 from aiogram import Bot, Dispatcher, Router, types
-from aiogram.filters import Command, Text
+from aiogram.filters import Command
+from aiogram.filters.text import Text
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.state import State, StatesGroup
