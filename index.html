@@ -1,0 +1,2143 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Standoff 2 - Платформа Праков</title>
+  <link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-card: #1a1a25;
+      --red-primary: #ff1744;
+      --red-dark: #b71c1c;
+      --purple-primary: #9c27b0;
+      --purple-dark: #6a1b9a;
+      --purple-light: #ce93d8;
+      --blue-primary: #4fc3f7;
+      --text-primary: #ffffff;
+      --text-secondary: #b0b0b0;
+      --gradient-main: linear-gradient(135deg, #ff1744, #9c27b0);
+      --gradient-card: linear-gradient(145deg, #1a1a25, #12121a);
+      --glass: rgba(255, 255, 255, 0.05);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Roboto", sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .bg-animation {
+      position: fixed;
+      inset: 0;
+      z-index: -3;
+      overflow: hidden;
+    }
+
+    .bg-animation::before {
+      content: "";
+      position: absolute;
+      inset: -40%;
+      background:
+        radial-gradient(circle, rgba(156, 39, 176, 0.2) 0%, transparent 50%),
+        radial-gradient(circle at 85% 20%, rgba(255, 23, 68, 0.2) 0%, transparent 50%),
+        radial-gradient(circle at 15% 80%, rgba(79, 195, 247, 0.2) 0%, transparent 55%);
+      animation: bgMove 20s ease-in-out infinite;
+    }
+
+    .floating-objects {
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      perspective: 1200px;
+      overflow: hidden;
+    }
+
+    .floating-objects .float {
+      position: absolute;
+      width: 180px;
+      height: 180px;
+      border-radius: 30% 70% 55% 45% / 45% 40% 60% 55%;
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0));
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(6px);
+      transform-style: preserve-3d;
+      animation: float 18s ease-in-out infinite;
+    }
+
+    .float.one { top: 8%; left: 5%; animation-delay: 0s; background: linear-gradient(135deg, rgba(255, 23, 68, 0.25), rgba(156, 39, 176, 0.05)); }
+    .float.two { top: 15%; right: 8%; width: 230px; height: 230px; animation-delay: 2s; background: linear-gradient(135deg, rgba(79, 195, 247, 0.25), rgba(156, 39, 176, 0.05)); }
+    .float.three { bottom: 8%; left: 15%; width: 200px; height: 200px; animation-delay: 4s; background: linear-gradient(135deg, rgba(156, 39, 176, 0.25), rgba(255, 23, 68, 0.05)); }
+    .float.four { bottom: 10%; right: 18%; width: 240px; height: 240px; animation-delay: 6s; background: linear-gradient(135deg, rgba(255, 214, 0, 0.25), rgba(255, 23, 68, 0.05)); }
+
+    @keyframes bgMove {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      50% { transform: translate(-5%, -5%) rotate(180deg); }
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+      50% { transform: translate3d(30px, -40px, 120px) rotate(20deg); }
+    }
+
+    .header {
+      background: rgba(18, 18, 26, 0.95);
+      backdrop-filter: blur(12px);
+      padding: 15px 0;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      border-bottom: 1px solid rgba(156, 39, 176, 0.3);
+    }
+
+    .header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    .logo {
+      font-family: "Russo One", sans-serif;
+      font-size: 28px;
+      background: var(--gradient-main);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+
+    .nav-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-primary);
+    }
+
+    .btn-primary {
+      background: var(--gradient-main);
+      color: white;
+      box-shadow: 0 4px 15px rgba(255, 23, 68, 0.4);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255, 23, 68, 0.6);
+    }
+
+    .btn-secondary {
+      background: rgba(156, 39, 176, 0.2);
+      color: var(--purple-light);
+      border: 1px solid var(--purple-primary);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(156, 39, 176, 0.4);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #b71c1c, #880e4f);
+      color: white;
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #1b5e20, #004d40);
+      color: white;
+    }
+
+    .btn-ghost {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-sm {
+      padding: 8px 16px;
+      font-size: 12px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .hero {
+      text-align: center;
+      padding: 70px 20px;
+      background: var(--gradient-card);
+      border-radius: 24px;
+      margin-bottom: 40px;
+      border: 1px solid rgba(156, 39, 176, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: var(--gradient-main);
+    }
+
+    .hero h1 {
+      font-family: "Russo One", sans-serif;
+      font-size: 50px;
+      margin-bottom: 15px;
+      background: var(--gradient-main);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      color: var(--text-secondary);
+      font-size: 18px;
+      margin-bottom: 30px;
+    }
+
+    .hero-cta {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .search-section {
+      background: var(--bg-card);
+      padding: 30px;
+      border-radius: 18px;
+      margin-bottom: 40px;
+      border: 1px solid rgba(156, 39, 176, 0.2);
+    }
+
+    .search-title {
+      font-size: 22px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .search-title i { color: var(--red-primary); }
+
+    .search-filters {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .filter-group {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .filter-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    .filter-group select,
+    .filter-group input,
+    .filter-group textarea {
+      width: 100%;
+      padding: 12px 15px;
+      background: var(--bg-secondary);
+      border: 1px solid rgba(156, 39, 176, 0.3);
+      border-radius: 10px;
+      color: var(--text-primary);
+      font-size: 14px;
+      transition: all 0.3s ease;
+    }
+
+    .filter-group select:focus,
+    .filter-group input:focus,
+    .filter-group textarea:focus {
+      outline: none;
+      border-color: var(--purple-primary);
+      box-shadow: 0 0 10px rgba(156, 39, 176, 0.3);
+    }
+
+    .rank-badge {
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      display: inline-block;
+      letter-spacing: 0.5px;
+    }
+
+    .rank-silver { background: linear-gradient(135deg, #78909c, #546e7a); }
+    .rank-gold { background: linear-gradient(135deg, #ffd700, #ff8c00); color: #1a1a1a; box-shadow: 0 0 15px rgba(255, 214, 0, 0.6); }
+    .rank-phoenix { background: linear-gradient(135deg, #ff5722, #e64a19); box-shadow: 0 0 18px rgba(255, 87, 34, 0.5); }
+    .rank-ranger { background: linear-gradient(135deg, #4caf50, #2e7d32); box-shadow: 0 0 18px rgba(76, 175, 80, 0.5); }
+    .rank-champion { background: linear-gradient(135deg, #2196f3, #1565c0); box-shadow: 0 0 20px rgba(33, 150, 243, 0.6); }
+    .rank-master { background: linear-gradient(135deg, #9c27b0, #6a1b9a); box-shadow: 0 0 22px rgba(156, 39, 176, 0.6); }
+    .rank-elite { background: linear-gradient(135deg, #e91e63, #ad1457); box-shadow: 0 0 24px rgba(233, 30, 99, 0.7); }
+    .rank-legend { background: linear-gradient(135deg, #ff1744, #9c27b0); box-shadow: 0 0 26px rgba(255, 23, 68, 0.7); }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 25px;
+      margin-bottom: 40px;
+    }
+
+    .player-card {
+      background: var(--gradient-card);
+      border-radius: 18px;
+      padding: 25px;
+      border: 1px solid rgba(156, 39, 176, 0.2);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .player-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: var(--gradient-main);
+      transform: scaleX(0);
+      transition: transform 0.3s ease;
+    }
+
+    .player-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 12px 34px rgba(156, 39, 176, 0.3);
+      border-color: var(--purple-primary);
+    }
+
+    .player-card:hover::before { transform: scaleX(1); }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 15px;
+      gap: 12px;
+    }
+
+    .player-avatar,
+    .profile-avatar {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: var(--gradient-main);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: bold;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .player-avatar img,
+    .profile-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .player-name {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+
+    .player-info {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .info-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+    }
+
+    .info-item i {
+      color: var(--purple-light);
+      width: 20px;
+    }
+
+    .info-item span,
+    .info-item a {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    .info-item a {
+      color: var(--purple-light);
+      text-decoration: none;
+      transition: color 0.3s ease;
+    }
+
+    .info-item a:hover { color: var(--red-primary); }
+
+    .card-description {
+      margin-top: 15px;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      color: var(--text-secondary);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    .card-actions .btn {
+      flex: 1;
+      justify-content: center;
+      padding: 10px;
+    }
+
+    .meta-row {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .meta-chip {
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .stats-section {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+
+    .stat-card {
+      background: var(--gradient-card);
+      padding: 25px;
+      border-radius: 15px;
+      text-align: center;
+      border: 1px solid rgba(156, 39, 176, 0.2);
+    }
+
+    .stat-number {
+      font-family: "Russo One", sans-serif;
+      font-size: 36px;
+      background: var(--gradient-main);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .stat-label {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-top: 5px;
+    }
+
+    .user-profile {
+      background: var(--bg-card);
+      border-radius: 18px;
+      padding: 25px;
+      margin-bottom: 30px;
+      border: 1px solid rgba(156, 39, 176, 0.2);
+      display: none;
+    }
+
+    .user-profile.active { display: block; }
+
+    .profile-header {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .profile-info h2 { margin-bottom: 10px; }
+
+    .profile-badges {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .profile-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .profile-stat {
+      background: rgba(0, 0, 0, 0.35);
+      padding: 15px;
+      border-radius: 12px;
+      text-align: center;
+    }
+
+    .profile-stat strong {
+      display: block;
+      font-size: 22px;
+      color: var(--blue-primary);
+    }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-overlay.active { display: flex; }
+
+    .modal {
+      background: var(--bg-card);
+      border-radius: 20px;
+      padding: 30px;
+      max-width: 640px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      border: 1px solid rgba(156, 39, 176, 0.3);
+      position: relative;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 24px;
+      cursor: pointer;
+      transition: color 0.3s ease;
+    }
+
+    .modal-close:hover { color: var(--red-primary); }
+
+    .modal h2 {
+      font-family: "Russo One", sans-serif;
+      font-size: 24px;
+      margin-bottom: 25px;
+      background: var(--gradient-main);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .form-group { margin-bottom: 20px; }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 12px 15px;
+      background: var(--bg-secondary);
+      border: 1px solid rgba(156, 39, 176, 0.3);
+      border-radius: 10px;
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: "Roboto", sans-serif;
+      transition: all 0.3s ease;
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: var(--purple-primary);
+      box-shadow: 0 0 10px rgba(156, 39, 176, 0.3);
+    }
+
+    .admin-panel {
+      background: var(--bg-card);
+      border-radius: 15px;
+      padding: 25px;
+      margin-bottom: 30px;
+      border: 1px solid rgba(255, 23, 68, 0.3);
+      display: none;
+    }
+
+    .admin-title {
+      font-family: "Russo One", sans-serif;
+      font-size: 22px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--red-primary);
+    }
+
+    .admin-users-list {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .admin-user-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .admin-user-info {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .admin-badge {
+      background: linear-gradient(135deg, #ff1744, #9c27b0);
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      text-transform: uppercase;
+    }
+
+    .super-admin-badge {
+      background: linear-gradient(135deg, #ffd700, #ff8c00);
+      color: #000;
+    }
+
+    .footer {
+      background: var(--bg-secondary);
+      padding: 40px 20px;
+      margin-top: 60px;
+      border-top: 1px solid rgba(156, 39, 176, 0.2);
+    }
+
+    .footer-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 40px;
+    }
+
+    .footer-section h3 {
+      font-family: "Russo One", sans-serif;
+      font-size: 18px;
+      margin-bottom: 20px;
+      color: var(--purple-light);
+    }
+
+    .footer-section p {
+      color: var(--text-secondary);
+      line-height: 1.8;
+    }
+
+    .footer-section a {
+      color: var(--purple-light);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      transition: color 0.3s ease;
+    }
+
+    .footer-section a:hover { color: var(--red-primary); }
+
+    .footer-bottom {
+      text-align: center;
+      padding-top: 30px;
+      margin-top: 30px;
+      border-top: 1px solid rgba(156, 39, 176, 0.1);
+      color: var(--text-secondary);
+    }
+
+    .referral-section {
+      background: rgba(156, 39, 176, 0.1);
+      border-radius: 15px;
+      padding: 25px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(156, 39, 176, 0.3);
+    }
+
+    .referral-section h3 {
+      margin-bottom: 10px;
+      color: var(--purple-light);
+    }
+
+    .referral-box {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin-top: 15px;
+    }
+
+    .referral-code-display {
+      background: var(--bg-secondary);
+      padding: 15px 20px;
+      border-radius: 10px;
+      border: 2px dashed var(--purple-primary);
+      text-align: center;
+    }
+
+    .referral-code-display .code {
+      font-family: "Russo One", sans-serif;
+      font-size: 24px;
+      color: var(--red-primary);
+      letter-spacing: 3px;
+    }
+
+    .referral-code-display .label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 5px;
+    }
+
+    .referral-link-box {
+      display: flex;
+      gap: 10px;
+    }
+
+    .referral-link-input {
+      flex: 1;
+      padding: 12px 15px;
+      background: var(--bg-secondary);
+      border: 1px solid rgba(156, 39, 176, 0.3);
+      border-radius: 8px;
+      color: var(--purple-light);
+      font-size: 13px;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 15px 25px;
+      background: var(--bg-card);
+      border: 2px solid var(--purple-primary);
+      border-radius: 10px;
+      color: var(--text-primary);
+      font-size: 14px;
+      z-index: 3000;
+      transform: translateX(150%);
+      transition: transform 0.3s ease;
+      max-width: 320px;
+    }
+
+    .toast.active { transform: translateX(0); }
+
+    .toast.success { border-color: #4caf50; }
+    .toast.error { border-color: var(--red-primary); }
+
+    .share-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+      flex-wrap: wrap;
+    }
+
+    .share-btn {
+      padding: 10px 15px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      border: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s;
+      color: white;
+    }
+
+    .share-btn.telegram { background: #0088cc; }
+    .share-btn.copy { background: var(--purple-primary); }
+    .share-btn.whatsapp { background: #25d366; }
+    .share-btn:hover { transform: scale(1.05); }
+
+    .ref-notice {
+      background: linear-gradient(135deg, rgba(255, 23, 68, 0.2), rgba(156, 39, 176, 0.2));
+      border: 1px solid var(--purple-primary);
+      border-radius: 10px;
+      padding: 15px 20px;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    .ref-notice.active { display: block; }
+    .ref-notice p { color: var(--purple-light); display: flex; align-items: center; gap: 10px; }
+
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    .empty-state i {
+      font-size: 60px;
+      color: var(--purple-primary);
+      margin-bottom: 20px;
+      display: block;
+    }
+
+    .rating-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .rating-bar button {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--text-primary);
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .comment-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 15px;
+    }
+
+    .comment-item {
+      background: rgba(0, 0, 0, 0.35);
+      padding: 12px 15px;
+      border-radius: 12px;
+    }
+
+    .comment-item strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .chat-box {
+      background: rgba(0, 0, 0, 0.35);
+      padding: 15px;
+      border-radius: 12px;
+      max-height: 240px;
+      overflow-y: auto;
+      display: grid;
+      gap: 10px;
+    }
+
+    .chat-message {
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.08);
+      font-size: 13px;
+    }
+
+    .chat-message.me { background: rgba(156, 39, 176, 0.35); justify-self: end; }
+
+    @media (max-width: 768px) {
+      .header-content { flex-direction: column; text-align: center; }
+      .hero h1 { font-size: 28px; }
+      .nav-buttons { justify-content: center; }
+      .cards-grid { grid-template-columns: 1fr; }
+      .referral-link-box { flex-direction: column; }
+      .modal { padding: 20px; }
+    }
+
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg-primary); }
+    ::-webkit-scrollbar-thumb { background: var(--purple-primary); border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="bg-animation"></div>
+  <div class="floating-objects">
+    <div class="float one"></div>
+    <div class="float two"></div>
+    <div class="float three"></div>
+    <div class="float four"></div>
+  </div>
+
+  <header class="header">
+    <div class="header-content">
+      <div class="logo" onclick="location.href=location.pathname">
+        <i class="fas fa-crosshairs"></i> SO2 ПРАКИ
+      </div>
+      <div class="nav-buttons" id="navButtons">
+        <button class="btn btn-secondary" onclick="openModal('loginModal')">
+          <i class="fas fa-sign-in-alt"></i> Вход
+        </button>
+        <button class="btn btn-primary" onclick="openModal('registerModal')">
+          <i class="fas fa-user-plus"></i> Регистрация
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="ref-notice" id="refNotice">
+      <p><i class="fas fa-gift"></i> <span id="refNoticeText">Вас пригласил друг!</span></p>
+    </div>
+
+    <section class="hero">
+      <h1><i class="fas fa-gamepad"></i> STANDOFF 2 ПРАКИ</h1>
+      <p>Найди идеального напарника, показывай свой стиль и собирай крутые отзывы!</p>
+      <div class="hero-cta">
+        <a href="https://t.me/praki12" target="_blank" class="btn btn-primary">
+          <i class="fab fa-telegram"></i> Наш Telegram
+        </a>
+        <button class="btn btn-ghost" onclick="document.getElementById('playersGrid').scrollIntoView({behavior:'smooth'})">
+          <i class="fas fa-fire"></i> Смотреть анкеты
+        </button>
+      </div>
+    </section>
+
+    <section class="stats-section">
+      <div class="stat-card">
+        <div class="stat-number" id="totalPlayers">0</div>
+        <div class="stat-label">Игроков</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="totalAnketas">0</div>
+        <div class="stat-label">Анкет</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="totalReferrals">0</div>
+        <div class="stat-label">Приглашений</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="totalLikes">0</div>
+        <div class="stat-label">Лайков</div>
+      </div>
+    </section>
+
+    <section class="user-profile" id="userProfile">
+      <div class="profile-header">
+        <div class="profile-avatar" id="profileAvatar">?</div>
+        <div class="profile-info">
+          <h2 id="profileName">Имя</h2>
+          <div class="profile-badges">
+            <span class="rank-badge" id="profileRank">Ранг</span>
+            <span class="admin-badge" id="adminBadge" style="display:none;">АДМИН</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="profile-stats">
+        <div class="profile-stat">
+          <strong id="profileLikes">0</strong>
+          <span>Лайков</span>
+        </div>
+        <div class="profile-stat">
+          <strong id="profileRating">0.0</strong>
+          <span>Средняя оценка</span>
+        </div>
+        <div class="profile-stat">
+          <strong id="profileReviews">0</strong>
+          <span>Отзывов</span>
+        </div>
+      </div>
+
+      <div class="referral-section">
+        <h3><i class="fas fa-gift"></i> Пригласи друга!</h3>
+        <div class="referral-box">
+          <div class="referral-code-display">
+            <div class="code" id="myRefCode">---</div>
+            <div class="label">Твой код</div>
+          </div>
+          <div>
+            <label style="color: var(--text-secondary); font-size: 14px;">Ссылка:</label>
+            <div class="referral-link-box">
+              <input type="text" class="referral-link-input" id="referralLink" readonly />
+              <button class="btn btn-primary" onclick="copyRefLink()"><i class="fas fa-copy"></i></button>
+            </div>
+          </div>
+          <div class="share-buttons">
+            <button class="share-btn telegram" onclick="shareToTg()"><i class="fab fa-telegram"></i> Telegram</button>
+            <button class="share-btn whatsapp" onclick="shareToWa()"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+            <button class="share-btn copy" onclick="copyCode()"><i class="fas fa-copy"></i> Код</button>
+          </div>
+          <p style="color: var(--text-secondary);">
+            <i class="fas fa-users"></i> Приглашено: <strong id="referralCount" style="color: var(--red-primary);">0</strong>
+          </p>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <button class="btn btn-primary" onclick="openModal('createAnketaModal')"><i class="fas fa-plus"></i> Создать анкету</button>
+        <button class="btn btn-secondary" onclick="openModal('editProfileModal')"><i class="fas fa-edit"></i> Редактировать</button>
+        <button class="btn btn-danger" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i> Выйти</button>
+      </div>
+    </section>
+
+    <section class="admin-panel" id="adminPanel">
+      <h2 class="admin-title"><i class="fas fa-shield-alt"></i> Админ-панель</h2>
+      <div class="admin-users-list" id="adminUsersList"></div>
+      <div id="superAdminSection" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(156, 39, 176, 0.3);">
+        <h3 style="color: #ffd700; margin-bottom: 15px;"><i class="fas fa-crown"></i> Супер-админ</h3>
+        <div class="form-group">
+          <select id="giveAdminSelect"><option value="">Выберите</option></select>
+        </div>
+        <button class="btn btn-success" onclick="giveAdminRights()"><i class="fas fa-user-shield"></i> Выдать</button>
+        <button class="btn btn-danger" onclick="removeAdminRights()"><i class="fas fa-user-times"></i> Забрать</button>
+      </div>
+    </section>
+
+    <section class="search-section">
+      <h2 class="search-title"><i class="fas fa-search"></i> Поиск</h2>
+      <div class="search-filters">
+        <div class="filter-group">
+          <label>Ник</label>
+          <input type="text" id="searchName" placeholder="Введите ник..." oninput="doSearch()" />
+        </div>
+        <div class="filter-group">
+          <label>Звание</label>
+          <select id="searchRank" onchange="doSearch()">
+            <option value="">Все</option>
+            <option value="silver1">Silver 1</option>
+            <option value="silver2">Silver 2</option>
+            <option value="silver3">Silver 3</option>
+            <option value="silver4">Silver 4</option>
+            <option value="gold1">Gold 1</option>
+            <option value="gold2">Gold 2</option>
+            <option value="gold3">Gold 3</option>
+            <option value="gold4">Gold 4</option>
+            <option value="phoenix">Phoenix</option>
+            <option value="ranger">Ranger</option>
+            <option value="champion">Champion</option>
+            <option value="master">Master</option>
+            <option value="elite">Elite</option>
+            <option value="legend">Legend</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <section class="cards-grid" id="playersGrid"></section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-section">
+        <h3><i class="fas fa-crosshairs"></i> SO2 ПРАКИ</h3>
+        <p>Лучший сервис для поиска напарников в Standoff 2!</p>
+      </div>
+      <div class="footer-section">
+        <h3>Ссылки</h3>
+        <a href="https://t.me/praki12" target="_blank"><i class="fab fa-telegram"></i> Telegram канал</a>
+      </div>
+      <div class="footer-section">
+        <h3>Поддержка</h3>
+        <a href="https://t.me/CYKA_AXYEHOO" target="_blank"><i class="fab fa-telegram"></i> @CYKA_AXYEHOO</a>
+      </div>
+    </div>
+    <div class="footer-bottom"><p>&copy; 2024 SO2 ПРАКИ</p></div>
+  </footer>
+
+  <div class="modal-overlay" id="loginModal" onclick="if(event.target===this)closeModal('loginModal')">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal('loginModal')">&times;</button>
+      <h2><i class="fas fa-sign-in-alt"></i> Вход</h2>
+      <div class="form-group">
+        <label>Telegram</label>
+        <input type="text" id="loginUsername" placeholder="@username" />
+      </div>
+      <div class="form-group">
+        <label>Пароль</label>
+        <input type="password" id="loginPassword" placeholder="Пароль" />
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="doLogin()">
+        <i class="fas fa-sign-in-alt"></i> Войти
+      </button>
+      <p style="text-align:center;margin-top:20px;color:var(--text-secondary)">
+        Нет аккаунта? <a href="#" onclick="closeModal('loginModal');openModal('registerModal');return false" style="color:var(--purple-light)">Регистрация</a>
+      </p>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="registerModal" onclick="if(event.target===this)closeModal('registerModal')">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal('registerModal')">&times;</button>
+      <h2><i class="fas fa-user-plus"></i> Регистрация</h2>
+      <div class="form-group">
+        <label>Ник в игре *</label>
+        <input type="text" id="regNickname" placeholder="Ваш ник" />
+      </div>
+      <div class="form-group">
+        <label>Telegram *</label>
+        <input type="text" id="regTelegram" placeholder="@username" />
+      </div>
+      <div class="form-group">
+        <label>Игровой ID *</label>
+        <input type="text" id="regGameId" placeholder="ID в игре" />
+      </div>
+      <div class="form-group">
+        <label>Звание *</label>
+        <select id="regRank">
+          <option value="">Выберите</option>
+          <option value="silver1">Silver 1</option>
+          <option value="silver2">Silver 2</option>
+          <option value="silver3">Silver 3</option>
+          <option value="silver4">Silver 4</option>
+          <option value="gold1">Gold 1</option>
+          <option value="gold2">Gold 2</option>
+          <option value="gold3">Gold 3</option>
+          <option value="gold4">Gold 4</option>
+          <option value="phoenix">Phoenix</option>
+          <option value="ranger">Ranger</option>
+          <option value="champion">Champion</option>
+          <option value="master">Master</option>
+          <option value="elite">Elite</option>
+          <option value="legend">Legend</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Пароль *</label>
+        <input type="password" id="regPassword" placeholder="Мин. 4 символа" />
+      </div>
+      <div class="form-group">
+        <label>Аватарка</label>
+        <input type="file" id="regAvatar" accept="image/*" />
+      </div>
+      <div class="form-group">
+        <label>Реферальный код</label>
+        <input type="text" id="refCode" placeholder="SO2_XXXXXX" />
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="doRegister()">
+        <i class="fas fa-user-plus"></i> Зарегистрироваться
+      </button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="createAnketaModal" onclick="if(event.target===this)closeModal('createAnketaModal')">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal('createAnketaModal')">&times;</button>
+      <h2><i class="fas fa-plus-circle"></i> Создать анкету</h2>
+      <div class="form-group">
+        <label>Заголовок</label>
+        <input type="text" id="anketaTitle" placeholder="Ищу напарника..." />
+      </div>
+      <div class="form-group">
+        <label>Описание</label>
+        <textarea id="anketaDescription" placeholder="О себе..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Ищу звание</label>
+        <select id="anketaPreferredRank">
+          <option value="">Любое</option>
+          <option value="silver1">Silver 1</option>
+          <option value="silver2">Silver 2</option>
+          <option value="silver3">Silver 3</option>
+          <option value="silver4">Silver 4</option>
+          <option value="gold1">Gold 1</option>
+          <option value="gold2">Gold 2</option>
+          <option value="gold3">Gold 3</option>
+          <option value="gold4">Gold 4</option>
+          <option value="phoenix">Phoenix</option>
+          <option value="ranger">Ranger</option>
+          <option value="champion">Champion</option>
+          <option value="master">Master</option>
+          <option value="elite">Elite</option>
+          <option value="legend">Legend</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="doCreateAnketa()">
+        <i class="fas fa-check"></i> Опубликовать
+      </button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="editProfileModal" onclick="if(event.target===this)closeModal('editProfileModal')">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal('editProfileModal')">&times;</button>
+      <h2><i class="fas fa-edit"></i> Редактировать</h2>
+      <div class="form-group">
+        <label>Ник</label>
+        <input type="text" id="editNickname" />
+      </div>
+      <div class="form-group">
+        <label>Игровой ID</label>
+        <input type="text" id="editGameId" />
+      </div>
+      <div class="form-group">
+        <label>Звание</label>
+        <select id="editRank">
+          <option value="silver1">Silver 1</option>
+          <option value="silver2">Silver 2</option>
+          <option value="silver3">Silver 3</option>
+          <option value="silver4">Silver 4</option>
+          <option value="gold1">Gold 1</option>
+          <option value="gold2">Gold 2</option>
+          <option value="gold3">Gold 3</option>
+          <option value="gold4">Gold 4</option>
+          <option value="phoenix">Phoenix</option>
+          <option value="ranger">Ranger</option>
+          <option value="champion">Champion</option>
+          <option value="master">Master</option>
+          <option value="elite">Elite</option>
+          <option value="legend">Legend</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Аватарка</label>
+        <input type="file" id="editAvatar" accept="image/*" />
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="doEditProfile()">
+        <i class="fas fa-save"></i> Сохранить
+      </button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="adminLoginModal" onclick="if(event.target===this)closeModal('adminLoginModal')">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal('adminLoginModal')">&times;</button>
+      <h2><i class="fas fa-shield-alt"></i> Админ-вход</h2>
+      <div class="form-group">
+        <label>Секретный код</label>
+        <input type="password" id="adminCode" placeholder="Код" />
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="doAdminLogin()">
+        <i class="fas fa-unlock"></i> Войти
+      </button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="userModal" onclick="if(event.target===this)closeModal('userModal')">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal('userModal')">&times;</button>
+      <h2 id="userModalTitle"><i class="fas fa-user"></i> Профиль игрока</h2>
+      <div id="userModalContent"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    var ADMIN_CODE = "3003abu";
+    var DB_NAME = "so2_praki_v6";
+
+    function loadDB() {
+      try {
+        var d = localStorage.getItem(DB_NAME);
+        if (d) return JSON.parse(d);
+      } catch (e) {}
+      return { users: [], anketas: [], admins: [], superAdmin: null, stats: { refs: 0, likes: 0 }, messages: [] };
+    }
+
+    function saveDB(db) {
+      try { localStorage.setItem(DB_NAME, JSON.stringify(db)); } catch (e) {}
+    }
+
+    function getUser() {
+      try {
+        var id = sessionStorage.getItem("userId");
+        if (!id) return null;
+        var db = loadDB();
+        for (var i = 0; i < db.users.length; i++) {
+          if (db.users[i].id === id) return db.users[i];
+        }
+      } catch (e) {}
+      return null;
+    }
+
+    function setUser(id) {
+      try { sessionStorage.setItem("userId", id); } catch (e) {}
+    }
+
+    function clearUser() {
+      try { sessionStorage.removeItem("userId"); } catch (e) {}
+    }
+
+    function makeId() {
+      return "u" + Math.random().toString(36).substr(2, 9) + Date.now();
+    }
+
+    function makeRefCode() {
+      var c = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      var r = "SO2_";
+      for (var i = 0; i < 6; i++) r += c[Math.floor(Math.random() * c.length)];
+      return r;
+    }
+
+    function esc(t) {
+      if (!t) return "";
+      var d = document.createElement("div");
+      d.textContent = t;
+      return d.innerHTML;
+    }
+
+    function fixTg(t) {
+      t = (t || "").trim();
+      if (t && t[0] !== "@") t = "@" + t;
+      return t;
+    }
+
+    function getBaseUrl() {
+      var u = location.href.split("?")[0].split("#")[0];
+      return u;
+    }
+
+    function toast(m, t) {
+      var el = document.getElementById("toast");
+      el.textContent = m;
+      el.className = "toast active " + (t || "success");
+      setTimeout(function () { el.className = "toast"; }, 3000);
+    }
+
+    function openModal(id) {
+      var m = document.getElementById(id);
+      if (m) m.classList.add("active");
+    }
+
+    function closeModal(id) {
+      var m = document.getElementById(id);
+      if (m) m.classList.remove("active");
+    }
+
+    function rankClass(r) {
+      if (!r) return "rank-silver";
+      if (r.indexOf("silver") > -1) return "rank-silver";
+      if (r.indexOf("gold") > -1) return "rank-gold";
+      var m = { phoenix: "rank-phoenix", ranger: "rank-ranger", champion: "rank-champion", master: "rank-master", elite: "rank-elite", legend: "rank-legend" };
+      return m[r] || "rank-silver";
+    }
+
+    function rankName(r) {
+      var n = {
+        silver1: "Silver 1",
+        silver2: "Silver 2",
+        silver3: "Silver 3",
+        silver4: "Silver 4",
+        gold1: "Gold 1",
+        gold2: "Gold 2",
+        gold3: "Gold 3",
+        gold4: "Gold 4",
+        phoenix: "Phoenix",
+        ranger: "Ranger",
+        champion: "Champion",
+        master: "Master",
+        elite: "Elite",
+        legend: "Legend"
+      };
+      return n[r] || r || "?";
+    }
+
+    function handleAvatar(file, cb) {
+      if (!file) return cb("");
+      var reader = new FileReader();
+      reader.onload = function (e) { cb(e.target.result); };
+      reader.readAsDataURL(file);
+    }
+
+    function calcRating(u) {
+      var list = u.ratings || [];
+      if (!list.length) return { avg: 0, total: 0 };
+      var sum = 0;
+      for (var i = 0; i < list.length; i++) sum += list[i].value;
+      return { avg: sum / list.length, total: list.length };
+    }
+
+    function doLogin() {
+      var db = loadDB();
+      var tg = fixTg(document.getElementById("loginUsername").value);
+      var pw = document.getElementById("loginPassword").value;
+
+      if (!tg || !pw) {
+        toast("Заполните все поля!", "error");
+        return;
+      }
+
+      var found = null;
+      for (var i = 0; i < db.users.length; i++) {
+        if (db.users[i].telegram.toLowerCase() === tg.toLowerCase() && db.users[i].password === pw) {
+          found = db.users[i];
+          break;
+        }
+      }
+
+      if (!found) {
+        toast("Неверный логин или пароль!", "error");
+        return;
+      }
+
+      setUser(found.id);
+      document.getElementById("loginUsername").value = "";
+      document.getElementById("loginPassword").value = "";
+      closeModal("loginModal");
+      refreshUI();
+      toast("Добро пожаловать, " + found.nickname + "!");
+    }
+
+    function doRegister() {
+      var db = loadDB();
+
+      var nick = document.getElementById("regNickname").value.trim();
+      var tg = fixTg(document.getElementById("regTelegram").value);
+      var gid = document.getElementById("regGameId").value.trim();
+      var rank = document.getElementById("regRank").value;
+      var pw = document.getElementById("regPassword").value;
+      var ref = document.getElementById("refCode").value.trim().toUpperCase();
+      var avatarFile = document.getElementById("regAvatar").files[0];
+
+      if (!nick || !tg || !gid || !rank || !pw) {
+        toast("Заполните все поля!", "error");
+        return;
+      }
+
+      if (pw.length < 4) {
+        toast("Пароль минимум 4 символа!", "error");
+        return;
+      }
+
+      for (var i = 0; i < db.users.length; i++) {
+        if (db.users[i].telegram.toLowerCase() === tg.toLowerCase()) {
+          toast("Этот Telegram уже занят!", "error");
+          return;
+        }
+      }
+
+      handleAvatar(avatarFile, function (avatar) {
+        var newUser = {
+          id: makeId(),
+          nickname: nick,
+          telegram: tg,
+          gameId: gid,
+          rank: rank,
+          password: pw,
+          refCode: makeRefCode(),
+          referrals: 0,
+          referredBy: null,
+          isAdmin: false,
+          avatar: avatar || "",
+          likes: [],
+          ratings: [],
+          comments: []
+        };
+
+        if (ref) {
+          for (var j = 0; j < db.users.length; j++) {
+            if (db.users[j].refCode === ref) {
+              db.users[j].referrals = (db.users[j].referrals || 0) + 1;
+              newUser.referredBy = db.users[j].id;
+              db.stats.refs = (db.stats.refs || 0) + 1;
+              break;
+            }
+          }
+        }
+
+        db.users.push(newUser);
+        saveDB(db);
+
+        document.getElementById("regNickname").value = "";
+        document.getElementById("regTelegram").value = "";
+        document.getElementById("regGameId").value = "";
+        document.getElementById("regRank").value = "";
+        document.getElementById("regPassword").value = "";
+        document.getElementById("refCode").value = "";
+        document.getElementById("regAvatar").value = "";
+
+        try { localStorage.removeItem("pendingRef"); } catch (e) {}
+        document.getElementById("refNotice").classList.remove("active");
+
+        closeModal("registerModal");
+        loadStats();
+        toast("Регистрация успешна! Войдите.");
+      });
+    }
+
+    function doLogout() {
+      clearUser();
+      refreshUI();
+      toast("Вы вышли");
+    }
+
+    function doAdminLogin() {
+      var code = document.getElementById("adminCode").value;
+      var user = getUser();
+
+      if (!user) {
+        toast("Сначала войдите!", "error");
+        closeModal("adminLoginModal");
+        openModal("loginModal");
+        return;
+      }
+
+      if (code === ADMIN_CODE) {
+        var db = loadDB();
+        db.superAdmin = user.id;
+        if (db.admins.indexOf(user.id) === -1) db.admins.push(user.id);
+        for (var i = 0; i < db.users.length; i++) {
+          if (db.users[i].id === user.id) db.users[i].isAdmin = true;
+        }
+        saveDB(db);
+        document.getElementById("adminCode").value = "";
+        closeModal("adminLoginModal");
+        refreshUI();
+        toast("Добро пожаловать, Супер-Админ!");
+      } else {
+        toast("Неверный код!", "error");
+      }
+    }
+
+    function doEditProfile() {
+      var user = getUser();
+      if (!user) return;
+
+      var db = loadDB();
+      var avatarFile = document.getElementById("editAvatar").files[0];
+
+      handleAvatar(avatarFile, function (avatar) {
+        for (var i = 0; i < db.users.length; i++) {
+          if (db.users[i].id === user.id) {
+            db.users[i].nickname = document.getElementById("editNickname").value.trim();
+            db.users[i].gameId = document.getElementById("editGameId").value.trim();
+            db.users[i].rank = document.getElementById("editRank").value;
+            if (avatar) db.users[i].avatar = avatar;
+
+            for (var j = 0; j < db.anketas.length; j++) {
+              if (db.anketas[j].userId === user.id) {
+                db.anketas[j].nickname = db.users[i].nickname;
+                db.anketas[j].gameId = db.users[i].gameId;
+                db.anketas[j].rank = db.users[i].rank;
+                db.anketas[j].avatar = db.users[i].avatar;
+              }
+            }
+            break;
+          }
+        }
+        saveDB(db);
+        closeModal("editProfileModal");
+        refreshUI();
+        loadAnketas();
+        toast("Сохранено!");
+      });
+    }
+
+    function doCreateAnketa() {
+      var user = getUser();
+      if (!user) {
+        toast("Войдите!", "error");
+        return;
+      }
+
+      var title = document.getElementById("anketaTitle").value.trim();
+      var desc = document.getElementById("anketaDescription").value.trim();
+      var pref = document.getElementById("anketaPreferredRank").value;
+
+      if (!title || !desc) {
+        toast("Заполните все поля!", "error");
+        return;
+      }
+
+      var db = loadDB();
+      db.anketas.unshift({
+        id: makeId(),
+        userId: user.id,
+        nickname: user.nickname,
+        telegram: user.telegram,
+        gameId: user.gameId,
+        rank: user.rank,
+        title: title,
+        description: desc,
+        preferredRank: pref,
+        avatar: user.avatar || ""
+      });
+      saveDB(db);
+
+      document.getElementById("anketaTitle").value = "";
+      document.getElementById("anketaDescription").value = "";
+      document.getElementById("anketaPreferredRank").value = "";
+
+      closeModal("createAnketaModal");
+      loadAnketas();
+      loadStats();
+      toast("Анкета создана!");
+    }
+
+    function deleteAnketa(id) {
+      if (!confirm("Удалить?")) return;
+      var user = getUser();
+      if (!user) return;
+
+      var db = loadDB();
+      var a = null;
+      for (var i = 0; i < db.anketas.length; i++) {
+        if (db.anketas[i].id === id) { a = db.anketas[i]; break; }
+      }
+      if (!a) return;
+
+      var isSA = db.superAdmin === user.id;
+      var isA = db.admins.indexOf(user.id) > -1;
+      var isOwner = a.userId === user.id;
+
+      if (!isOwner && !isA && !isSA) {
+        toast("Нет прав!", "error");
+        return;
+      }
+
+      db.anketas = db.anketas.filter(function (x) { return x.id !== id; });
+      saveDB(db);
+      loadAnketas();
+      loadStats();
+      toast("Удалено!");
+    }
+
+    function doSearch() {
+      var n = document.getElementById("searchName").value.trim().toLowerCase();
+      var r = document.getElementById("searchRank").value;
+      loadAnketas(n, r);
+    }
+
+    function getUserById(id) {
+      var db = loadDB();
+      for (var i = 0; i < db.users.length; i++) {
+        if (db.users[i].id === id) return db.users[i];
+      }
+      return null;
+    }
+
+    function toggleLike(userId) {
+      var user = getUser();
+      if (!user) {
+        toast("Сначала войдите!", "error");
+        return;
+      }
+      if (user.id === userId) {
+        toast("Нельзя лайкать себя!", "error");
+        return;
+      }
+
+      var db = loadDB();
+      for (var i = 0; i < db.users.length; i++) {
+        if (db.users[i].id === userId) {
+          var likes = db.users[i].likes || [];
+          var idx = likes.indexOf(user.id);
+          if (idx > -1) {
+            likes.splice(idx, 1);
+            db.stats.likes = Math.max(0, (db.stats.likes || 0) - 1);
+          } else {
+            likes.push(user.id);
+            db.stats.likes = (db.stats.likes || 0) + 1;
+          }
+          db.users[i].likes = likes;
+          break;
+        }
+      }
+      saveDB(db);
+      loadAnketas();
+      refreshUI();
+    }
+
+    function rateUser(userId, value) {
+      var user = getUser();
+      if (!user) {
+        toast("Сначала войдите!", "error");
+        return;
+      }
+      if (user.id === userId) {
+        toast("Нельзя оценивать себя!", "error");
+        return;
+      }
+      var db = loadDB();
+      for (var i = 0; i < db.users.length; i++) {
+        if (db.users[i].id === userId) {
+          var ratings = db.users[i].ratings || [];
+          var existing = false;
+          for (var j = 0; j < ratings.length; j++) {
+            if (ratings[j].from === user.id) {
+              ratings[j].value = value;
+              existing = true;
+              break;
+            }
+          }
+          if (!existing) ratings.push({ from: user.id, value: value });
+          db.users[i].ratings = ratings;
+          break;
+        }
+      }
+      saveDB(db);
+      openUserProfile(userId);
+    }
+
+    function addComment(userId) {
+      var user = getUser();
+      if (!user) {
+        toast("Сначала войдите!", "error");
+        return;
+      }
+      var text = document.getElementById("commentInput").value.trim();
+      if (!text) {
+        toast("Введите комментарий!", "error");
+        return;
+      }
+      var db = loadDB();
+      for (var i = 0; i < db.users.length; i++) {
+        if (db.users[i].id === userId) {
+          db.users[i].comments = db.users[i].comments || [];
+          db.users[i].comments.unshift({ from: user.nickname, text: text, at: new Date().toISOString() });
+          break;
+        }
+      }
+      saveDB(db);
+      document.getElementById("commentInput").value = "";
+      openUserProfile(userId);
+    }
+
+    function sendMessage(userId) {
+      var user = getUser();
+      if (!user) {
+        toast("Сначала войдите!", "error");
+        return;
+      }
+      var text = document.getElementById("messageInput").value.trim();
+      if (!text) {
+        toast("Введите сообщение!", "error");
+        return;
+      }
+      var db = loadDB();
+      db.messages = db.messages || [];
+      db.messages.push({ from: user.id, to: userId, text: text, at: new Date().toISOString() });
+      saveDB(db);
+      document.getElementById("messageInput").value = "";
+      openUserProfile(userId);
+    }
+
+    function getConversation(db, userId, viewerId) {
+      var all = db.messages || [];
+      var res = [];
+      for (var i = 0; i < all.length; i++) {
+        var msg = all[i];
+        if ((msg.from === viewerId && msg.to === userId) || (msg.from === userId && msg.to === viewerId)) {
+          res.push(msg);
+        }
+      }
+      return res;
+    }
+
+    function openUserProfile(userId) {
+      var db = loadDB();
+      var user = getUserById(userId);
+      if (!user) return;
+
+      var current = getUser();
+      var rating = calcRating(user);
+      var likes = (user.likes || []).length;
+      var comments = user.comments || [];
+      var isLiked = current && (user.likes || []).indexOf(current.id) > -1;
+
+      var avatar = user.avatar ? '<img src="' + esc(user.avatar) + '" alt="avatar" />' : esc(user.nickname[0].toUpperCase());
+      var content = '';
+      content += '<div class="profile-header">';
+      content += '<div class="profile-avatar">' + avatar + '</div>';
+      content += '<div class="profile-info">';
+      content += '<h2>' + esc(user.nickname) + '</h2>';
+      content += '<div class="profile-badges">';
+      content += '<span class="rank-badge ' + rankClass(user.rank) + '">' + rankName(user.rank) + '</span>';
+      content += '</div></div></div>';
+
+      content += '<div class="profile-stats">';
+      content += '<div class="profile-stat"><strong>' + likes + '</strong><span>Лайков</span></div>';
+      content += '<div class="profile-stat"><strong>' + rating.avg.toFixed(1) + '</strong><span>Средняя оценка</span></div>';
+      content += '<div class="profile-stat"><strong>' + rating.total + '</strong><span>Оценок</span></div>';
+      content += '</div>';
+
+      content += '<div class="meta-row">';
+      content += '<span class="meta-chip"><i class="fab fa-telegram"></i> ' + esc(user.telegram) + '</span>';
+      content += '<span class="meta-chip"><i class="fas fa-id-card"></i> ID: ' + esc(user.gameId) + '</span>';
+      content += '</div>';
+
+      content += '<div class="card-actions" style="margin-top:18px;">';
+      content += '<button class="btn btn-primary" onclick="toggleLike(\'' + user.id + '\')"><i class="fas fa-heart"></i> ' + (isLiked ? 'Убрать лайк' : 'Лайкнуть') + '</button>';
+      content += '<a class="btn btn-secondary" href="https://t.me/' + esc(user.telegram.replace('@', '')) + '" target="_blank"><i class="fab fa-telegram"></i> Telegram</a>';
+      content += '</div>';
+
+      content += '<h3 style="margin-top:25px;">Оценить игрока</h3>';
+      content += '<div class="rating-bar">';
+      for (var r = 0; r <= 5; r++) {
+        content += '<button onclick="rateUser(\'' + user.id + '\',' + r + ')">' + r + '</button>';
+      }
+      content += '</div>';
+
+      content += '<h3 style="margin-top:25px;">Комментарии</h3>';
+      content += '<div class="form-group"><textarea id="commentInput" placeholder="Оставь комментарий..."></textarea></div>';
+      content += '<button class="btn btn-primary" onclick="addComment(\'' + user.id + '\')"><i class="fas fa-comment"></i> Отправить</button>';
+      content += '<div class="comment-list">';
+      if (!comments.length) {
+        content += '<div class="comment-item">Пока нет комментариев.</div>';
+      } else {
+        for (var c = 0; c < comments.length; c++) {
+          content += '<div class="comment-item"><strong>' + esc(comments[c].from) + '</strong>' + esc(comments[c].text) + '</div>';
+        }
+      }
+      content += '</div>';
+
+      if (current) {
+        var conversation = getConversation(db, user.id, current.id);
+        content += '<h3 style="margin-top:25px;">Сообщения</h3>';
+        content += '<div class="chat-box">';
+        if (!conversation.length) {
+          content += '<div class="chat-message">Пока нет сообщений.</div>';
+        } else {
+          for (var m = 0; m < conversation.length; m++) {
+            var msg = conversation[m];
+            var cls = msg.from === current.id ? 'chat-message me' : 'chat-message';
+            var sender = msg.from === current.id ? 'Вы' : user.nickname;
+            content += '<div class="' + cls + '"><strong>' + esc(sender) + ':</strong> ' + esc(msg.text) + '</div>';
+          }
+        }
+        content += '</div>';
+        content += '<div class="form-group" style="margin-top:12px;"><input id="messageInput" type="text" placeholder="Написать сообщение..." /></div>';
+        content += '<button class="btn btn-secondary" onclick="sendMessage(\'' + user.id + '\')"><i class="fas fa-paper-plane"></i> Отправить</button>';
+      }
+
+      document.getElementById("userModalContent").innerHTML = content;
+      openModal("userModal");
+    }
+
+    function loadAnketas(nf, rf) {
+      var db = loadDB();
+      var user = getUser();
+      var grid = document.getElementById("playersGrid");
+
+      var list = db.anketas.slice();
+      if (nf) list = list.filter(function (a) { return a.nickname.toLowerCase().indexOf(nf) > -1; });
+      if (rf) list = list.filter(function (a) { return a.rank === rf; });
+
+      if (list.length === 0) {
+        grid.innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><h3>Ничего не найдено</h3></div>';
+        return;
+      }
+
+      var isSA = user && db.superAdmin === user.id;
+      var isA = user && db.admins.indexOf(user.id) > -1;
+
+      var html = "";
+      for (var i = 0; i < list.length; i++) {
+        var a = list[i];
+        var cardUser = getUserById(a.userId) || a;
+        var canDel = user && (a.userId === user.id || isA || isSA);
+        var tg = a.telegram.replace("@", "");
+        var rating = calcRating(cardUser);
+        var likes = (cardUser.likes || []).length;
+        var avatar = cardUser.avatar ? '<img src="' + esc(cardUser.avatar) + '" alt="avatar" />' : esc(a.nickname[0].toUpperCase());
+
+        html += '<div class="player-card">';
+        html += '<div class="card-header"><div class="player-avatar">' + avatar + '</div>';
+        html += '<span class="rank-badge ' + rankClass(a.rank) + '">' + rankName(a.rank) + '</span></div>';
+        html += '<h3 class="player-name">' + esc(a.nickname) + '</h3>';
+        html += '<p style="color:var(--purple-light);font-size:14px">' + esc(a.title) + '</p>';
+        html += '<div class="player-info">';
+        html += '<div class="info-item"><i class="fab fa-telegram"></i><a href="https://t.me/' + esc(tg) + '" target="_blank">' + esc(a.telegram) + '</a></div>';
+        html += '<div class="info-item"><i class="fas fa-id-card"></i><span>ID: ' + esc(a.gameId) + '</span></div>';
+        if (a.preferredRank) html += '<div class="info-item"><i class="fas fa-star"></i><span>Ищу: ' + rankName(a.preferredRank) + '</span></div>';
+        html += '</div>';
+        html += '<div class="meta-row">';
+        html += '<span class="meta-chip"><i class="fas fa-heart"></i> ' + likes + '</span>';
+        html += '<span class="meta-chip"><i class="fas fa-star"></i> ' + rating.avg.toFixed(1) + ' (' + rating.total + ')</span>';
+        html += '</div>';
+        html += '<div class="card-description">' + esc(a.description) + '</div>';
+        html += '<div class="card-actions">';
+        html += '<button class="btn btn-primary" onclick="openUserProfile(\'' + a.userId + '\')"><i class="fas fa-user"></i> Профиль</button>';
+        html += '<a href="https://t.me/' + esc(tg) + '" target="_blank" class="btn btn-secondary"><i class="fab fa-telegram"></i> Написать</a>';
+        if (canDel) html += '<button class="btn btn-danger" onclick="deleteAnketa(\'' + a.id + '\')"><i class="fas fa-trash"></i></button>';
+        html += '</div></div>';
+      }
+      grid.innerHTML = html;
+    }
+
+    function giveAdminRights() {
+      var uid = document.getElementById("giveAdminSelect").value;
+      if (!uid) { toast("Выберите!", "error"); return; }
+      var user = getUser();
+      var db = loadDB();
+      if (db.superAdmin !== user.id) { toast("Нет прав!", "error"); return; }
+      if (db.admins.indexOf(uid) > -1) { toast("Уже админ!", "error"); return; }
+      db.admins.push(uid);
+      for (var i = 0; i < db.users.length; i++) {
+        if (db.users[i].id === uid) db.users[i].isAdmin = true;
+      }
+      saveDB(db);
+      loadAdminPanel();
+      toast("Выдано!");
+    }
+
+    function removeAdminRights() {
+      var uid = document.getElementById("giveAdminSelect").value;
+      if (!uid) { toast("Выберите!", "error"); return; }
+      var user = getUser();
+      var db = loadDB();
+      if (db.superAdmin !== user.id) { toast("Нет прав!", "error"); return; }
+      if (uid === db.superAdmin) { toast("Нельзя!", "error"); return; }
+      db.admins = db.admins.filter(function (x) { return x !== uid; });
+      for (var i = 0; i < db.users.length; i++) {
+        if (db.users[i].id === uid) db.users[i].isAdmin = false;
+      }
+      saveDB(db);
+      loadAdminPanel();
+      toast("Забрано!");
+    }
+
+    function deleteUserById(uid) {
+      if (!confirm("Удалить пользователя?")) return;
+      var user = getUser();
+      var db = loadDB();
+      if (db.superAdmin !== user.id) { toast("Нет прав!", "error"); return; }
+      if (uid === db.superAdmin) { toast("Нельзя!", "error"); return; }
+      db.users = db.users.filter(function (u) { return u.id !== uid; });
+      db.anketas = db.anketas.filter(function (a) { return a.userId !== uid; });
+      db.admins = db.admins.filter(function (x) { return x !== uid; });
+      saveDB(db);
+      loadAdminPanel();
+      loadAnketas();
+      loadStats();
+      toast("Удалено!");
+    }
+
+    function loadAdminPanel() {
+      var user = getUser();
+      var panel = document.getElementById("adminPanel");
+      if (!user) { panel.style.display = "none"; return; }
+
+      var db = loadDB();
+      var isSA = db.superAdmin === user.id;
+      var isA = db.admins.indexOf(user.id) > -1;
+
+      if (!isA && !isSA) { panel.style.display = "none"; return; }
+      panel.style.display = "block";
+
+      var list = document.getElementById("adminUsersList");
+      var html = "";
+      for (var i = 0; i < db.users.length; i++) {
+        var u = db.users[i];
+        var uSA = db.superAdmin === u.id;
+        var uA = db.admins.indexOf(u.id) > -1;
+        html += '<div class="admin-user-item"><div class="admin-user-info">';
+        html += '<strong>' + esc(u.nickname) + '</strong> ';
+        html += '<span style="color:var(--text-secondary)">' + esc(u.telegram) + '</span> ';
+        html += '<span class="rank-badge ' + rankClass(u.rank) + '" style="font-size:10px;padding:3px 8px">' + rankName(u.rank) + '</span>';
+        if (uSA) html += ' <span class="admin-badge super-admin-badge">ГЛАВНЫЙ</span>';
+        else if (uA) html += ' <span class="admin-badge">АДМИН</span>';
+        html += '</div>';
+        if (isSA && u.id !== user.id) {
+          html += '<button class="btn btn-danger btn-sm" onclick="deleteUserById(\'' + u.id + '\')"><i class="fas fa-trash"></i></button>';
+        }
+        html += '</div>';
+      }
+      list.innerHTML = html;
+
+      var ss = document.getElementById("superAdminSection");
+      if (isSA) {
+        ss.style.display = "block";
+        var sel = document.getElementById("giveAdminSelect");
+        var opts = '<option value="">Выберите</option>';
+        for (var j = 0; j < db.users.length; j++) {
+          if (db.users[j].id !== db.superAdmin) {
+            var isAdm = db.admins.indexOf(db.users[j].id) > -1;
+            opts += '<option value="' + db.users[j].id + '">' + esc(db.users[j].nickname) + (isAdm ? " [АДМИН]" : "") + "</option>";
+          }
+        }
+        sel.innerHTML = opts;
+      } else {
+        ss.style.display = "none";
+      }
+    }
+
+    function copyRefLink() {
+      var inp = document.getElementById("referralLink");
+      inp.select();
+      try { navigator.clipboard.writeText(inp.value); toast("Скопировано!"); }
+      catch (e) { document.execCommand("copy"); toast("Скопировано!"); }
+    }
+
+    function copyCode() {
+      var user = getUser();
+      if (!user) return;
+      try { navigator.clipboard.writeText(user.refCode); toast("Код: " + user.refCode); }
+      catch (e) { toast("Код: " + user.refCode); }
+    }
+
+    function shareToTg() {
+      var user = getUser();
+      if (!user) return;
+      var t = "Присоединяйся! Мой код: " + user.refCode;
+      var url = "https://t.me/share/url?url=" + encodeURIComponent(getBaseUrl() + "?ref=" + user.refCode) + "&text=" + encodeURIComponent(t);
+      window.open(url, "_blank");
+    }
+
+    function shareToWa() {
+      var user = getUser();
+      if (!user) return;
+      var t = "Присоединяйся к SO2 ПРАКИ! Код: " + user.refCode + " Ссылка: " + getBaseUrl() + "?ref=" + user.refCode;
+      window.open("https://wa.me/?text=" + encodeURIComponent(t), "_blank");
+    }
+
+    function refreshUI() {
+      var user = getUser();
+      var db = loadDB();
+      var nav = document.getElementById("navButtons");
+      var prof = document.getElementById("userProfile");
+
+      if (user) {
+        var isSA = db.superAdmin === user.id;
+        var isA = db.admins.indexOf(user.id) > -1;
+        var rating = calcRating(user);
+
+        var h = '<span style="color:var(--purple-light);display:flex;align-items:center;gap:5px">';
+        h += '<i class="fas fa-user"></i> ' + esc(user.nickname);
+        if (isSA) h += ' <i class="fas fa-crown" style="color:#ffd700"></i>';
+        else if (isA) h += ' <i class="fas fa-shield-alt" style="color:var(--red-primary)"></i>';
+        h += "</span>";
+
+        if (isA || isSA) {
+          h += '<button class="btn btn-secondary btn-sm" onclick="document.getElementById(\'adminPanel\').scrollIntoView({behavior:\'smooth\'})"><i class="fas fa-shield-alt"></i></button>';
+        } else {
+          h += '<button class="btn btn-secondary btn-sm" onclick="openModal(\'adminLoginModal\')"><i class="fas fa-key"></i></button>';
+        }
+        h += '<button class="btn btn-danger btn-sm" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i></button>';
+        nav.innerHTML = h;
+
+        prof.classList.add("active");
+        document.getElementById("profileAvatar").innerHTML = user.avatar ? '<img src="' + esc(user.avatar) + '" alt="avatar" />' : user.nickname[0].toUpperCase();
+        document.getElementById("profileName").textContent = user.nickname;
+        document.getElementById("profileRank").textContent = rankName(user.rank);
+        document.getElementById("profileRank").className = "rank-badge " + rankClass(user.rank);
+
+        var badge = document.getElementById("adminBadge");
+        if (isSA) { badge.style.display = "inline"; badge.className = "admin-badge super-admin-badge"; badge.textContent = "ГЛАВНЫЙ"; }
+        else if (isA) { badge.style.display = "inline"; badge.className = "admin-badge"; badge.textContent = "АДМИН"; }
+        else { badge.style.display = "none"; }
+
+        document.getElementById("myRefCode").textContent = user.refCode;
+        document.getElementById("referralLink").value = getBaseUrl() + "?ref=" + user.refCode;
+        document.getElementById("referralCount").textContent = user.referrals || 0;
+        document.getElementById("profileLikes").textContent = (user.likes || []).length;
+        document.getElementById("profileRating").textContent = rating.avg.toFixed(1);
+        document.getElementById("profileReviews").textContent = rating.total;
+
+        document.getElementById("editNickname").value = user.nickname;
+        document.getElementById("editGameId").value = user.gameId;
+        document.getElementById("editRank").value = user.rank;
+
+        loadAdminPanel();
+      } else {
+        nav.innerHTML = '<button class="btn btn-secondary" onclick="openModal(\'loginModal\')"><i class="fas fa-sign-in-alt"></i> Вход</button><button class="btn btn-primary" onclick="openModal(\'registerModal\')"><i class="fas fa-user-plus"></i> Регистрация</button>';
+        prof.classList.remove("active");
+        document.getElementById("adminPanel").style.display = "none";
+      }
+    }
+
+    function loadStats() {
+      var db = loadDB();
+      document.getElementById("totalPlayers").textContent = db.users.length;
+      document.getElementById("totalAnketas").textContent = db.anketas.length;
+      document.getElementById("totalReferrals").textContent = db.stats.refs || 0;
+      document.getElementById("totalLikes").textContent = db.stats.likes || 0;
+    }
+
+    function checkRefUrl() {
+      try {
+        var p = new URLSearchParams(location.search);
+        var ref = p.get("ref");
+        if (ref) {
+          ref = ref.toUpperCase();
+          localStorage.setItem("pendingRef", ref);
+          document.getElementById("refCode").value = ref;
+          document.getElementById("refNotice").classList.add("active");
+          document.getElementById("refNoticeText").textContent = "Код " + ref + " применён! Регистрируйтесь.";
+          setTimeout(function () { openModal("registerModal"); }, 500);
+        } else {
+          var saved = localStorage.getItem("pendingRef");
+          if (saved) document.getElementById("refCode").value = saved;
+        }
+      } catch (e) {}
+    }
+
+    function init() {
+      refreshUI();
+      loadAnketas();
+      loadStats();
+      checkRefUrl();
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", init);
+    } else {
+      init();
+    }
+  </script>
+</body>
+</html>
